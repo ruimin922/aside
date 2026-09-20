@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 丁香紫 · 极简胶卷 -->
+  <defs>
+    <linearGradient id="bg5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7B5EA7"/>
+      <stop offset="100%" stop-color="#5B3E87"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="url(#bg5)"/>
+
+  <!-- 胶卷外框 -->
+  <rect x="20" y="30" width="88" height="68" rx="8" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.35"/>
+
+  <!-- 胶卷分隔线 -->
+  <line x1="48" y1="30" x2="48" y2="98" stroke="#ffffff" stroke-width="1.5" opacity="0.2"/>
+  <line x1="80" y1="30" x2="80" y2="98" stroke="#ffffff" stroke-width="1.5" opacity="0.2"/>
+
+  <!-- 左格：竖线（笔记） -->
+  <rect x="26" y="44" width="16" height="2.5" rx="1.25" fill="#ffffff" opacity="0.6"/>
+  <rect x="26" y="52" width="12" height="2.5" rx="1.25" fill="#ffffff" opacity="0.4"/>
+  <rect x="26" y="60" width="14" height="2.5" rx="1.25" fill="#ffffff" opacity="0.25"/>
+
+  <!-- 中格：时间刻度圆点 -->
+  <circle cx="64" cy="56" r="10" fill="#ffffff" opacity="0.15"/>
+  <circle cx="64" cy="56" r="5" fill="#ffffff" opacity="0.25"/>
+  <rect x="62" y="44" width="4" height="8" rx="2" fill="#ffffff" opacity="0.5"/>
+
+  <!-- 右格：竖线（笔记） -->
+  <rect x="86" y="44" width="16" height="2.5" rx="1.25" fill="#ffffff" opacity="0.6"/>
+  <rect x="86" y="52" width="10" height="2.5" rx="1.25" fill="#ffffff" opacity="0.4"/>
+  <rect x="86" y="60" width="13" height="2.5" rx="1.25" fill="#ffffff" opacity="0.25"/>
+
+  <!-- 顶部/底部胶片孔 -->
+  <rect x="30" y="18" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="46" y="18" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="62" y="18" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="78" y="18" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="94" y="18" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+
+  <rect x="30" y="102" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="46" y="102" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="62" y="102" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="78" y="102" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+  <rect x="94" y="102" width="8" height="8" rx="2" fill="#ffffff" opacity="0.2"/>
+</svg>

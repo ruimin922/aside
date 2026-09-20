@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>旁白 Aside</title>
+    <link rel="icon" type="image/png" href="icons/icon32.png?v=sand-1" />
+    <link rel="stylesheet" href="panel.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="design.css" />
+    <link rel="stylesheet" href="cursor.css" />
+  </head>
+  <body>
+    <div class="window-actions"><button id="btnOpenFull" type="button" title="在新标签页整理记录" aria-label="在新标签页整理记录" hidden>↗</button><button id="btnCloseLibrary" type="button" title="收起记录库" aria-label="收起记录库" hidden><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+    <dialog class="help-dialog" id="onboardBanner" hidden aria-labelledby="helpTitle">
+      <div class="help-head"><span class="eyebrow">旁白 · 使用帮助</span><button id="btnCloseHelp" type="button" class="icon-btn" aria-label="关闭使用帮助"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+      <div class="help-scroll" tabindex="0" aria-label="帮助内容，向下滚动查看快捷键"><section class="help-tutorial">
+      <svg class="help-quote" viewBox="0 0 80 60" fill="none" aria-hidden="true"><path d="M8 31C7 17 17 7 34 6L35 14C24 16 19 21 19 28L34 27L32 51L10 53Z" fill="currentColor"/><path d="M45 30C44 16 55 5 72 7L72 15C61 16 56 22 57 29L73 30L70 53L47 51Z" fill="currentColor" opacity=".6"/></svg>
+      <h2 id="helpTitle">让想法留下来。</h2>
+      <p class="help-lead">留下此刻的想法，也记住它发生的地方。</p>
+      <ol class="help-steps">
+        <li><span>01</span><div><strong>播放一个视频</strong><p>打开想看的电影、访谈或视频播客。</p><p>支持 YouTube、B 站、爱奇艺、优酷、芒果 TV 和腾讯视频。</p></div></li>
+        <li><span>02</span><div><strong>留下这一刻</strong><p>点击 <kbd data-command="quick-note">Alt + N</kbd> 或点击悬浮球，打开快速记录，自动记录当前时间点并截取画面，你可以接着写下此刻的想法。</p></div></li>
+        <li><span>03</span><div><strong>保存，随时回看</strong><p>保存笔记，随时可以在「旁白」中找到你的记录，并快速回到当时视频片段。</p></div></li>
+      </ol>
+      </section>
+      <section class="help-shortcuts" aria-labelledby="shortcutTitle"><div class="help-scroll-cue" aria-hidden="true">继续向下 · 让记录更顺手 ↓</div><h3 id="shortcutTitle">顺手的快捷键</h3><dl>
+        <dt data-command="_execute_action">Alt + L</dt><dd>打开 / 收起记录库</dd>
+        <dt data-command="quick-note">Alt + N</dt><dd>打开或聚焦快速记录</dd>
+        <dt data-local-shortcut="subtitle">Alt + S</dt><dd>编辑记录时，在光标处插入当前字幕</dd>
+        <dt data-local-shortcut="timestamp">Alt + T</dt><dd>编辑记录时，获取当前时间戳</dd>
+        <dt data-local-shortcut="save">Ctrl + Enter</dt><dd>保存正在编辑的记录</dd>
+        <dt>Esc</dt><dd>关闭最上层窗口，保留草稿</dd>
+        <dt>/</dt><dd>搜索记录库</dd>
+        <dt>N</dt><dd>新建记录</dd>
+        <dt>S / L</dt><dd>进入设置 / 返回记录库</dd>
+        <dt>↑ / ↓ · Enter</dt><dd>选择视频 · 展开或收起预览</dd>
+        <dt>Tab / Shift + Tab</dt><dd>移动到下一个 / 上一个操作</dd>
+        <dt>?</dt><dd>打开使用帮助</dd>
+      </dl><p class="shortcut-scope">单字母快捷键仅在旁白窗口内、未输入文字时生效。<span data-local-shortcut="editor">Alt + S / T</span> 仅在编辑器内生效。时间段模式下，<span data-local-shortcut="timestamp">Alt + T</span> 更新当前聚焦的终点，否则更新起点。</p><button class="text-link" type="button" id="btnShortcutSettings">自定义打开记录 / 记录库的快捷键 ↗</button></section>
+      </div>
+      <div class="help-footer"><span>向下滚动，查看快捷键</span><button class="primary-action" id="btnHelpDone" type="button">知道了</button></div>
+    </dialog>
+    <div class="home-landscape" aria-hidden="true">
+      <span class="home-landscape__sun"></span>
+      <svg class="home-landscape__hills" viewBox="0 0 1200 600" preserveAspectRatio="none" focusable="false">
+        <path class="home-landscape__far" d="M0 420C310 430 690 112 1200 182V600H0Z"/>
+        <path class="home-landscape__near" d="M0 292C410 310 780 504 1200 450V600H0Z"/>
+        <path class="home-landscape__ridge" d="M0 292C410 310 780 504 1200 450"/>
+      </svg>
+    </div>
+    <div class="app">
+      <main class="main">
+        <!-- 首页：电影列表（默认页） -->
+        <section class="view view--active" id="viewList">
+          <header class="topbar">
+            <div class="topbar__row">
+              <div class="topbar__left">
+                <h1 class="topbar__title topbar__title--brand">
+                  <span class="brand-mark">旁白</span>
+                  <span class="brand-mark-en" aria-hidden="true">Aside</span>
+                </h1>
+              </div>
+              <div class="topbar__actions">
+                <button
+                  type="button"
+                  class="theme-toggle"
+                  id="themeToggle"
+                  aria-label="切换浅色或深色主题"
+                  aria-pressed="false"
+                  title="切换至浅色"
+                >
+                  <span class="theme-toggle__icon" aria-hidden="true">
+                    <svg class="icon-sun" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+                      <line x1="10" y1="2" x2="10" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="10" y1="16" x2="10" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="2" y1="10" x2="4" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="16" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="14.36" y1="14.36" x2="15.78" y2="15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="15.78" y1="4.22" x2="14.36" y2="5.64" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      <line x1="5.64" y1="14.36" x2="4.22" y2="15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M16.5 11.5A7 7 0 0 1 8.5 3.5a7 7 0 1 0 8 8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                </button>
+                <div class="tip-toggle-wrap" id="tipToggleWrap">
+                  <button
+                    type="button"
+                    class="tip-toggle"
+                    id="btnOnboardToggle"
+                    aria-label="使用帮助"
+                    aria-expanded="false"
+                    aria-controls="onboardBanner"
+                    title="使用帮助"
+                  >
+                    <svg class="icon-tip" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M8.5 4a4.5 4.5 0 0 0-2.6 8.2V14h5.2v-1.8A4.5 4.5 0 0 0 8.5 4Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M7 17h3M14.5 2v3M13 3.5h3M16 8h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                  <div class="tip-pointer" id="tipPointer" hidden aria-hidden="true">
+                    
+                    <span class="tip-pointer__hint">第一次使用？从这里开始</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="text-link text-link--top"
+                  id="btnSearchToggle"
+                  aria-expanded="false"
+                  aria-controls="searchExpand"
+                  title="搜索"
+                >
+                  <svg class="icon-search" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <p class="topbar__hint" id="headerHint">记录观看时产生的想法。</p>
+          </header>
+
+          <div class="home-toolbar-wrap">
+            <div class="library-commandbar">
+              <div class="search-expand" id="searchExpand">
+                <label class="sr-only" for="searchInput">搜索</label>
+                <div class="search-field">
+                  <span class="search-field__icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+                  <input id="searchInput" class="input search-field__input" type="text" placeholder="搜索视频、记录或标签…" /><kbd class="search-shortcut" aria-hidden="true">/</kbd>
+                </div>
+              </div>
+              <button class="primary-action" id="btnCaptureCurrent" type="button">记录新笔记</button>
+            </div>
+            <div class="home-toolbar">
+              <span id="librarySummary" class="library-summary">我的记录库</span>
+              <button type="button" class="home-sort-label" id="homeSortLabel" aria-label="切换排序">
+                最近编辑 <span class="home-sort-label__caret">▾</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="list" id="movieList"></div>
+
+          <div class="empty" id="emptyState">
+            <div class="empty__art" aria-hidden="true">
+<svg class="empty-quote" viewBox="0 0 80 60" fill="none" aria-hidden="true"><path d="M8 31C7 17 17 7 34 6L35 14C24 16 19 21 19 28L34 27L32 51L10 53Z" fill="currentColor"/><path d="M45 30C44 16 55 5 72 7L72 15C61 16 56 22 57 29L73 30L70 53L47 51Z" fill="currentColor" opacity=".6"/></svg>
+            </div>
+            <div class="empty__title">从一个想法开始</div>
+            <div class="empty__sub">播放电影、访谈或视频播客，留下第一条记录。</div>
+          </div>
+        </section>
+
+        <!-- 记录（简化版：片名 + 感受） -->
+        <section class="view" id="viewNew">
+          <header class="pagebar">
+            <button class="btn btn--ghost btn--icon" id="btnBackFromNew" type="button" title="返回">
+              <svg class="icon-back" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 5 L7 10 L12 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div class="pagebar__title">新建记录</div>
+            <div class="pagebar__right"></div>
+          </header>
+
+          <div class="card card--new">
+            <div class="note-date-stamp" id="noteDateStamp"></div><p class="editor-intro">保留此刻的想法，细节可以稍后补充。</p>
+
+            <div id="newMovieMetaFields">
+            <div class="field">
+              <label class="label" for="movieTitle">所属视频</label>
+              <input id="movieTitle" class="input" type="text" placeholder="电影 / 视频标题" />
+              <div class="error-text" id="errTitle"></div>
+            </div>
+
+            <details class="video-classification"><summary>视频分类（可选）</summary><div class="field">
+              <label class="label" for="movieTagInput">视频分类（可选）</label>
+              <div id="movieTagsDisplay" class="selected-tags"></div>
+              <input
+                id="movieTagInput"
+                class="input"
+                type="text"
+                placeholder="访谈、电影、学习…"
+                autocomplete="off"
+              />
+            </div>
+            </details></div><!-- /newMovieMetaFields -->
+
+            <div class="field">
+              <label class="label" for="entryContent">记录内容</label>
+              <button id="btnEditorSubtitle" type="button" class="text-link editor-subtitle">字幕</button>
+              <div class="textarea-wrap textarea-wrap--serif">
+                <textarea
+                  id="entryContent"
+                  class="textarea textarea--serif"
+                  placeholder="随手记一点…"
+                  rows="4"
+                ></textarea>
+                <div class="textarea-meta">
+                  <span class="hint-soft" id="longContentHint" hidden></span>
+                  <span class="word-count" id="wordCount">0 字</span>
+                </div>
+              </div>
+              <div class="error-text" id="errContent"></div>
+            </div>
+
+            <div class="field">
+              <span class="label">视频位置 <span class="optional">可选</span></span><p id="timeAvailability" class="field-caption" hidden>当前页面无法获取时间，可手动填写</p>
+              <div class="ts-mode ts-mode--underline" role="tablist">
+                <button type="button" class="ts-mode__btn ts-mode__btn--on" id="modePoint" role="tab">时间点</button>
+                <button type="button" class="ts-mode__btn" id="modeRange" role="tab">时间段</button>
+              </div>
+
+              <div id="blockPoint" class="ts-block">
+                <div class="ts-inline">
+                  <svg class="ts-inline__icon icon-timer" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="10" cy="11" r="6.5" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M10 7.5 v3.5 l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="8" y1="2" x2="12" y2="2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  </svg>
+                  <input
+                    id="stampPointInput"
+                    class="input input--ts"
+                    type="text"
+                    placeholder="例如 12:34" aria-label="视频时间"
+                    autocomplete="off"
+                  />
+                  <button class="text-link text-link--inline editor-time" id="btnGetTime" type="button"><span>获取当前时间</span></button>
+                  <button type="button" class="icon-btn icon-btn--x" id="btnClearStamp" title="清除" disabled>×</button>
+                </div>
+                <div class="error-text" id="errTimePoint"></div>
+                <img id="thumbPreviewPoint" class="thumb-preview" alt="" hidden />
+              </div>
+
+              <div id="blockRange" class="ts-block" hidden>
+                <div class="ts-inline ts-inline--range">
+                  <span class="ts-inline__label">起点</span>
+                  <input
+                    aria-label="开始时间" id="stampStartInput"
+                    class="input input--ts"
+                    type="text"
+                    placeholder="例如 12:34"
+                    autocomplete="off"
+                  />
+                  <button type="button" class="text-link text-link--inline" id="btnGetStart">获取</button>
+                  <button type="button" class="icon-btn icon-btn--x" id="btnClearStart" title="清除">×</button>
+                </div>
+                <div class="ts-inline ts-inline--range">
+                  <span class="ts-inline__label">终点</span>
+                  <input
+                    aria-label="结束时间" id="stampEndInput"
+                    class="input input--ts"
+                    type="text"
+                    placeholder="例如 12:34"
+                    autocomplete="off"
+                  />
+                  <button type="button" class="text-link text-link--inline" id="btnGetEnd">获取</button>
+                  <button type="button" class="icon-btn icon-btn--x" id="btnClearEnd" title="清除">×</button>
+                </div>
+                <div class="error-text" id="errTimeRange"></div>
+                <img id="thumbPreviewRange" class="thumb-preview" alt="" hidden />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="tagInput">标签 <span class="optional">可选</span></label>
+              <div class="tag-input-row">
+                <input id="tagInput" class="input" type="text" placeholder="输入标签后回车，如 观点、创作、待实践" />
+              </div>
+              <div id="entryTagsDisplay" class="entry-tags"></div>
+            </div>
+
+            <div class="actions actions--links">
+              
+              <button class="text-link text-link--muted" id="btnReset" type="button">清空</button>
+              <button class="text-link" id="btnSave" type="button">保存记录</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 电影详情 -->
+        <section class="view" id="viewDetail">
+          <header class="pagebar">
+            <button class="btn btn--ghost btn--icon" id="btnBackFromDetail" type="button" title="返回">
+              <svg class="icon-back" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 5 L7 10 L12 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div class="pagebar__title pagebar__title--stack">
+              <div class="pagebar__title-main">视频记录</div>
+              <span class="pagebar__title-sub" id="detailTopVideoLink"></span>
+            </div>
+            <div class="pagebar__right pagebar__right--links">
+              <button type="button" class="text-link" id="btnAddMoreTop">＋ 记录</button>
+              <button type="button" class="text-link" id="btnExportMovie">导出</button><button type="button" class="text-link detail-delete" id="btnDeleteMovie" title="删除此视频及其全部记录">删除</button>
+            </div>
+          </header>
+
+          <div class="card card--padded detailHero">
+            <div class="detailHero__row">
+              <div class="detailHero__meta">
+                <div id="detailMetaDisplay">
+                  <div class="detailHero__title-row">
+                    <div class="detailHero__title detailHero__title--editable" id="detailTitleLine" title="点击编辑视频标题">—</div>
+                  </div>
+                  <div class="detailHero__sub">
+                    <div class="detailHero__genres-row">
+                      <div class="detailHero__genres" id="detailGenres"></div>
+                      <button class="detailHero__link" id="detailVideoLink" type="button" hidden></button>
+                    </div>
+                    <div class="meta-text" id="detailCount"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="entries entries--v14" id="detailEntries"></div>
+
+          <div class="detailFooter" hidden></div>
+        </section>
+
+        <!-- 设置页 -->
+        <section class="view" id="viewStats">
+          <!-- 账号 -->
+          <div class="settings-section">
+            <div class="settings-section__label">账号</div>
+            <div class="settings-group">
+              <div class="settings-row">
+                <span class="settings-row__name">云端同步</span>
+                <div class="account-card__status" id="accountStatus">
+                  <span class="sync-dot" id="syncDot" data-state="hidden" title="同步状态"></span>
+                  <span class="account-card__status-text" id="accountStatusText"></span>
+                </div>
+              </div>
+              <div id="accountGuest" class="settings-row settings-row--block">
+                <p class="account-card__hint">文字与截图在同步成功后可跨设备查看；待同步内容仍只保存在本机。未登录笔记与账号笔记分别保存。</p>
+                <button type="button" class="btn-google-login" id="btnGoogleLogin">
+                  <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.6 2.4 30.1 0 24 0 14.8 0 7 5.5 3.1 13.5l7.8 6C12.7 13.8 17.9 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/>
+                    <path fill="#FBBC05" d="M10.9 28.5A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.5l-7.8-6A24 24 0 0 0 0 24c0 3.8.9 7.4 2.5 10.6l8.4-6.1z"/>
+                    <path fill="#34A853" d="M24 48c6.1 0 11.2-2 14.9-5.4l-7.5-5.8c-2 1.4-4.6 2.2-7.4 2.2-6.1 0-11.3-4.1-13.1-9.7l-8.4 6.1C7 43.2 14.8 48 24 48z"/>
+                  </svg>
+                  使用 Google 账号登录
+                </button>
+              </div>
+              <div id="accountUser" class="settings-row settings-row--block" hidden>
+                <div class="account-card__user-row">
+                  <img class="account-card__avatar" id="accountAvatar" alt="" src="" width="28" height="28" hidden />
+                  <div>
+                    <span class="account-card__email" id="accountEmail"></span>
+                    <button type="button" class="text-link text-link--muted account-card__signout" id="btnSignOut">退出登录</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 内容导出与独立配置 -->
+          <div class="settings-section">
+            <div class="settings-section__label">内容导出</div>
+            <div class="settings-group">
+              <button type="button" class="settings-row settings-row--btn export-choice" id="btnExportAll">
+                <span><span class="settings-row__name">导出为 Markdown</span><span class="export-choice__hint">全部笔记，保存为文本文件</span></span><span class="export-choice__icon" aria-hidden="true">↓</span>
+              </button>
+              <button type="button" class="settings-row settings-row--btn export-choice" id="btnExportAllNotion">
+                <span><span class="settings-row__name">导出到 Notion</span><span class="export-choice__hint">全部笔记，按视频生成页面</span></span><span class="export-choice__icon" aria-hidden="true">↗</span>
+              </button>
+              <button type="button" class="settings-row settings-row--btn" id="btnToggleNotion" aria-expanded="false" aria-controls="notionSettingsBody">
+                <span class="settings-row__name">Notion 配置</span>
+                <div class="settings-row__right">
+                  <span class="notion-settings__badge" id="notionStatusBadge" hidden></span>
+                  <svg class="notion-settings__chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                    <path d="M3.5 5.5 L7 9 L10.5 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </button>
+              <div class="notion-settings__body" id="notionSettingsBody" hidden inert>
+                <div class="notion-settings__body-inner">
+                  <p class="notion-settings__hint">
+                    在 Notion 创建
+                    <a href="https://www.notion.so/my-integrations" target="_blank" rel="noreferrer" class="text-link">Integration</a>，
+                    在目标页面「连接」中授权，然后填入 Secret 并粘贴页面链接。
+                  </p>
+                  <label class="label label--small" for="notionToken">Integration Secret</label>
+                  <div class="notion-token-row">
+                    <input id="notionToken" class="input" type="password" autocomplete="off" placeholder="secret_…" />
+                    <button type="button" class="notion-token-toggle" id="btnToggleToken">显示</button>
+                  </div>
+                  <p class="notion-settings__security-hint">Token 保存在本机存储中。建议创建仅限「读写」权限的 Internal Integration，勿使用拥有完整权限的账号级 Token。</p>
+                  <label class="label label--small" for="notionParentId">父页面</label>
+                  <input id="notionParentId" class="input" type="text" autocomplete="off" placeholder="粘贴 Notion 页面链接即可" style="margin-top: var(--space-2)" />
+                  <div class="notion-settings__actions">
+                    
+                    <button type="button" class="text-link" id="btnTestNotionConfig">测试连接</button>
+                    <button type="button" class="text-link text-link--strong" id="btnSaveNotionConfig">保存设置</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 记录统计 -->
+          <div class="card card--padded stats-card">
+            <div class="stats-grid" id="statsGrid"></div>
+          </div>
+          <div class="card card--padded heatmap-card">
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+
+          <!-- 关于：位于功能与记录统计之后 -->
+          <div class="settings-section">
+            <div class="settings-section__label">关于</div>
+            <div class="settings-group">
+              <div class="about-card">
+                <div class="about-card__brand">
+                  <span class="about-card__brand-zh">旁白</span>
+                  <span class="about-card__brand-en">Aside</span>
+                </div>
+                <p class="about-card__tagline">记录观看时产生的想法。</p>
+                <div class="about-card__meta">
+                  <div class="about-card__row">
+                    <span class="about-card__k">作者</span>
+                    <span class="about-card__v">ruimin</span>
+                  </div>
+                  <div class="about-card__row">
+                    <span class="about-card__k">联系</span>
+                    <a class="about-card__v about-card__link" href="mailto:ruiminqian92@gmail.com">ruiminqian92@gmail.com</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+      </main>
+
+      <!-- 底部 Tab Bar -->
+      <nav class="tab-bar" id="tabBar" aria-label="导航">
+        <button class="tab-bar__item tab-bar__item--active" id="tabList" type="button">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="2.5" rx="1.25" fill="currentColor" opacity="0.9"/>
+            <rect x="3" y="10.75" width="18" height="2.5" rx="1.25" fill="currentColor" opacity="0.9"/>
+            <rect x="3" y="16.5" width="12" height="2.5" rx="1.25" fill="currentColor" opacity="0.9"/>
+          </svg>
+          <span>记录库</span>
+        </button>
+<button class="tab-bar__item" id="tabSettings" type="button">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="4" y1="7" x2="20" y2="7"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="17" x2="20" y2="17"/>
+            <circle cx="9" cy="7" r="2" fill="var(--surface, #fff)"/>
+            <circle cx="15" cy="12" r="2" fill="var(--surface, #fff)"/>
+            <circle cx="8" cy="17" r="2" fill="var(--surface, #fff)"/>
+          </svg>
+          <span>设置</span>
+        </button>
+      </nav>
+
+      <div class="toast" id="toast" data-kind="good" role="status" aria-live="polite"></div>
+
+      <!-- 确认弹窗 -->
+      <div class="modal" id="confirmModal" hidden aria-hidden="true" role="alertdialog" aria-labelledby="confirmModalMsg">
+        <div class="modal__backdrop" id="confirmModalBackdrop"></div>
+        <div class="modal__panel">
+          <p class="modal__hint" id="confirmModalMsg" style="text-align:center"></p>
+          <div class="modal__actions">
+            <button type="button" class="text-link text-link--muted" id="confirmModalCancel">取消</button>
+            <button type="button" class="text-link text-link--strong" id="confirmModalOk">确定</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 导出：Markdown / Notion -->
+      <div class="modal" id="exportModal" hidden aria-hidden="true" role="dialog" aria-labelledby="exportModalTitle">
+        <div class="modal__backdrop" id="exportModalBackdrop"></div>
+        <div class="modal__panel">
+          <div class="modal__title" id="exportModalTitle">导出</div>
+          <p class="modal__hint" id="exportModalHint"></p>
+          <div class="modal__actions">
+            <button type="button" class="text-link text-link--strong" id="btnExportMd">Markdown</button>
+            <button type="button" class="text-link text-link--strong" id="btnExportNotion">Notion</button>
+          </div>
+          <button type="button" class="text-link text-link--muted modal__close" id="btnExportModalClose">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="vendor/marked.min.js"></script>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

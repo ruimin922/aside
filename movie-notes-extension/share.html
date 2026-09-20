@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>旁白 Aside · 分享</title>
+    <link rel="icon" type="image/png" href="icons/icon32.png?v=sand-1" />
+    <link rel="stylesheet" href="share.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="cursor.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card" id="card" hidden>
+        <div class="card__signature">
+          <svg class="quote-mark" viewBox="0 0 80 60" fill="none" aria-hidden="true">
+            <path d="M8 31C7 17 17 7 34 6L35 14C24 16 19 21 19 28L34 27L32 51L10 53Z" fill="currentColor" />
+            <path d="M45 30C44 16 55 5 72 7L72 15C61 16 56 22 57 29L73 30L70 53L47 51Z" fill="currentColor" />
+          </svg>
+          <span class="brand">旁白 <span class="brand__en">Aside</span></span>
+        </div>
+
+        <article class="content" id="content"></article>
+
+        <div class="media" id="media" hidden>
+          <img id="thumb" alt="" />
+        </div>
+
+        <div class="head"><span class="source-label">记录于</span>
+          <div class="title" id="movieTitle">—</div>
+          <div class="meta">
+            <span class="pill pill--time" id="when">—</span>
+            <span class="meta__dot">·</span>
+            <span class="meta__date" id="date">—</span>
+          </div>
+          <div class="tags" id="tags"></div>
+        </div>
+
+        <div class="footer">
+          <div class="footer__left">
+            <a class="link" id="videoLink" href="#" target="_blank" rel="noreferrer" hidden>回到视频片段</a>
+            <span class="footer__note">用旁白，留下观看时产生的想法。</span>
+          </div>
+          <div class="footer__qr" id="footerQr" hidden>
+            <canvas id="qrCanvas"></canvas>
+            <span class="footer__qr-label">扫码直达</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="empty" id="empty">
+        <div class="empty__title">链接无效或内容为空</div>
+        <div class="empty__sub">请从扩展的「分享」按钮打开。</div>
+      </section>
+
+      <div class="save-bar" id="saveBar" hidden>
+        <button class="btn-save-img" id="btnSaveImg">
+          <svg class="btn-save-img__icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M10 13.5L5.5 9H8V3.5h4V9h2.5L10 13.5z" fill="currentColor"/>
+            <rect x="3" y="15" width="14" height="1.5" rx="0.75" fill="currentColor"/>
+          </svg>
+          保存图片
+        </button>
+        <p class="save-status" id="saveStatus" role="status"></p>
+        <div class="share-row">
+          <button class="btn-share" id="btnCopyImage">复制图片</button>
+        </div>
+        <p class="share-guide">保存或复制这张卡片，分享给朋友。</p>
+        <p class="share-hint" id="shareHint" role="status"></p>
+      </div>
+    </main>
+
+    <script src="vendor/qrcode-generator.js"></script>
+    <script src="vendor/marked.min.js"></script>
+    <script type="module" src="share.js"></script>
+  </body>
+</html>

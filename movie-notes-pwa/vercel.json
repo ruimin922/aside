@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/ping-supabase",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 深靛蓝 · 胶片孔 + 竖排线条 -->
+  <rect width="128" height="128" rx="24" fill="#2D3561"/>
+
+  <!-- 左右胶片孔 -->
+  <rect x="12" y="34" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="12" y="50" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="12" y="66" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="12" y="82" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="107" y="34" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="107" y="50" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="107" y="66" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+  <rect x="107" y="82" width="9" height="9" rx="2" fill="#ffffff" opacity="0.15"/>
+
+  <!-- 中央笔记线 -->
+  <rect x="30" y="46" width="68" height="4" rx="2" fill="#ffffff" opacity="0.85"/>
+  <rect x="30" y="58" width="52" height="4" rx="2" fill="#ffffff" opacity="0.55"/>
+  <rect x="30" y="70" width="36" height="4" rx="2" fill="#ffffff" opacity="0.3"/>
+
+  <!-- 小圆点装饰（时间戳感） -->
+  <circle cx="30" cy="86" r="3.5" fill="#7B9CFF" opacity="0.9"/>
+  <circle cx="42" cy="86" r="3.5" fill="#7B9CFF" opacity="0.5"/>
+  <circle cx="54" cy="86" r="3.5" fill="#7B9CFF" opacity="0.25"/>
+</svg>

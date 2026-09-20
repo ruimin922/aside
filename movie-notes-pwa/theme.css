@@ -1,0 +1,77 @@
+/* Aside shared theme. PWA copy uses the same tokens for independent deployment. */
+:root, html[data-theme="dark"] {
+  color-scheme:dark;
+  --bg-page:#302a3b; --bg-elevated:#40384d; --bg-glass:rgba(31,25,44,.26); --bg-input:rgba(24,19,35,.20);
+  --glass-fill:rgba(27,22,39,.68); --glass-line:rgba(246,239,255,.28);
+  --glass-reflection:rgba(255,255,255,.16); --glass-solid:#393244;
+  --library-glass:rgba(35,28,49,.48); --ambient-base:#575066;
+  --ambient-light:rgba(216,203,232,.68); --ambient-shade:rgba(36,27,57,.72);
+  --ambient-blush:rgba(175,143,174,.35); --glass-sheen:rgba(255,255,255,.09);
+  --text:#faf8fd; --text-secondary:#e4ddea; --text-tertiary:#d7cede;
+  --border:rgba(210,195,229,.16); --border-strong:#81718f;
+  --accent:#ddd0ef; --accent-soft:rgba(221,208,239,.10); --stamp:#ddd0ef;
+  --hover-bg:#4d445d; --primary-1:#ddd0ef; --primary-2:#ddd0ef; --primary-border:#ddd0ef; --on-primary:#302a3b;
+  --primary-shadow:transparent; --focus-ring:rgba(221,208,239,.20);
+  --danger:#ffb5b2; --good:var(--accent); --warn:#edcda5;
+  --scrollbar-thumb:rgba(221,208,239,.25);
+  --font:"MiSans",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  --font-serif:var(--font); --font-sans:var(--font);
+  --type-title:24px; --type-body:16px; --type-ui:14px; --type-meta:12px;
+  --surface:var(--bg-elevated); --card-bg:var(--bg-elevated); --text-primary:var(--text); --text-muted:var(--text-secondary);
+  --header-bg:var(--bg-glass); --entry-card-text:var(--text); --bg-page-end:var(--bg-page);
+  --time-tag-1:var(--accent-soft); --time-tag-2:var(--accent-soft);
+  --stat-bar-1:var(--accent); --stat-bar-2:var(--accent-soft); --md-quote-border:var(--accent);
+  --footer-fade-0:transparent; --footer-fade-mid:var(--bg-elevated);
+  --toast-good-bg:var(--bg-elevated); --toast-good-border:var(--border);
+  --toast-danger-bg:var(--bg-elevated); --toast-danger-border:var(--border);
+  --toast-warn-bg:var(--bg-elevated); --toast-warn-border:var(--border); --toast-text:var(--text);
+}
+html[data-theme="light"] {
+  color-scheme:light;
+  --bg-page:#e9e4ef; --bg-elevated:#f5f2f8; --bg-glass:rgba(248,245,252,.32); --bg-input:rgba(255,255,255,.30);
+  --glass-fill:rgba(248,245,252,.68); --glass-line:rgba(255,255,255,.65);
+  --glass-reflection:rgba(255,255,255,.65); --glass-solid:#f0ecf5;
+  --library-glass:rgba(251,249,255,.48); --ambient-base:#c8c1d3;
+  --ambient-light:rgba(255,253,255,.84); --ambient-shade:rgba(109,91,137,.46);
+  --ambient-blush:rgba(211,186,205,.42); --glass-sheen:rgba(255,255,255,.24);
+  --text:#352e41; --text-secondary:#655c73; --text-tertiary:#746a82;
+  --border:rgba(91,77,111,.17); --border-strong:#9a8da9;
+  --accent:#665278; --accent-soft:rgba(102,82,120,.08); --stamp:#665278;
+  --hover-bg:#e8e1ef; --primary-1:#665278; --primary-2:#665278; --primary-border:#665278; --on-primary:#fff;
+  --focus-ring:rgba(102,82,120,.18); --danger:#a43648; --good:var(--accent); --warn:#856020;
+  --scrollbar-thumb:rgba(91,77,111,.3);
+  --toast-good-bg:var(--bg-elevated); --toast-good-border:var(--border);
+  --toast-danger-bg:var(--bg-elevated); --toast-danger-border:var(--border);
+  --toast-warn-bg:var(--bg-elevated); --toast-warn-border:var(--border);
+}
+
+:root {
+ --action:var(--accent);--action-soft:var(--accent-soft);--bg-hover:var(--hover-bg);--pending:var(--warn);
+ --shadow-soft:0 8px 28px #241b3430;--shadow-inset:inset 0 1px 0 var(--glass-reflection);
+ --overlay:rgba(27,21,38,.55);--focus-border:var(--accent);--disabled-opacity:.45;
+ --bg:var(--bg-page);--card:var(--bg-elevated);--fg:var(--text);--muted:var(--text-secondary);
+ --wash:#494054;--card-end:#3b3348;--soft:var(--accent-soft);--on-accent:var(--on-primary);
+}
+html[data-theme="light"] {--wash:#f9f7fc;--card-end:#eee8f4;--overlay:rgba(53,42,69,.28);}
+@media(prefers-color-scheme:light) {
+:root:not([data-theme]) {
+  color-scheme:light;
+  --bg-page:#e9e4ef; --bg-elevated:#f5f2f8; --bg-glass:rgba(248,245,252,.32); --bg-input:rgba(255,255,255,.30);
+  --glass-fill:rgba(248,245,252,.68); --glass-line:rgba(255,255,255,.65);
+  --glass-reflection:rgba(255,255,255,.65); --glass-solid:#f0ecf5;
+  --library-glass:rgba(251,249,255,.48); --ambient-base:#c8c1d3;
+  --ambient-light:rgba(255,253,255,.84); --ambient-shade:rgba(109,91,137,.46);
+  --ambient-blush:rgba(211,186,205,.42); --glass-sheen:rgba(255,255,255,.24);
+  --text:#352e41; --text-secondary:#655c73; --text-tertiary:#746a82;
+  --border:rgba(91,77,111,.17); --border-strong:#9a8da9;
+  --accent:#665278; --accent-soft:rgba(102,82,120,.08); --stamp:#665278;
+  --hover-bg:#e8e1ef; --primary-1:#665278; --primary-2:#665278; --primary-border:#665278; --on-primary:#fff;
+  --focus-ring:rgba(102,82,120,.18); --danger:#a43648; --good:var(--accent); --warn:#856020;
+  --scrollbar-thumb:rgba(91,77,111,.3);
+  --toast-good-bg:var(--bg-elevated); --toast-good-border:var(--border);
+  --toast-danger-bg:var(--bg-elevated); --toast-danger-border:var(--border);
+  --toast-warn-bg:var(--bg-elevated); --toast-warn-border:var(--border);
+}
+
+:root:not([data-theme]) {--wash:#f9f7fc;--card-end:#eee8f4;--overlay:rgba(53,42,69,.28);}
+}

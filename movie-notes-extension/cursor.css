@@ -1,0 +1,10 @@
+/* Native SVG cursors; no tracking layer or animation. */
+@media (hover:hover) and (pointer:fine) {
+  :root {--aside-cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2228%22%20viewBox%3D%220%200%2024%2028%22%3E%3Cpath%20d%3D%22M3%202L19%2015L12%2016L8%2023Z%22%20fill%3D%22%23e3d8ef%22%20stroke%3D%22%23554362%22%20stroke-width%3D%221.3%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%204L11%2015%22%20stroke%3D%22%23897299%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 3 2,auto;--aside-cursor-link:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2226%22%20height%3D%2228%22%20viewBox%3D%220%200%2026%2028%22%3E%3Cpath%20d%3D%22M3%202L19%2015L12%2016L8%2023Z%22%20fill%3D%22%23d7c2e8%22%20stroke%3D%22%23554362%22%20stroke-width%3D%221.3%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%204L11%2015%22%20stroke%3D%22%23897299%22%20stroke-width%3D%221%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2221%22%20cy%3D%225%22%20r%3D%222%22%20fill%3D%22%23897299%22%20stroke%3D%22%23f6f0fa%22%20stroke-width%3D%221%22%2F%3E%3C%2Fsvg%3E") 3 2,pointer;}
+  html,body,.app,.help-dialog,.wrap {cursor:var(--aside-cursor);}
+  .app :is(button,a,summary,select,[role="button"]),.help-dialog :is(button,a,summary,select),.wrap :is(button,a) {cursor:var(--aside-cursor-link);}
+  .app :is(input,textarea,[contenteditable="true"],.note-preview__text,.entry-card__content),.wrap .content {cursor:text;}
+  .app :is(button,input,select):disabled,.help-dialog button:disabled,.wrap button:disabled {cursor:not-allowed;}
+  .app .sr-only {cursor:inherit;}
+}
+@media (forced-colors:active) {:root{--aside-cursor:auto;--aside-cursor-link:pointer;}body,.app,.help-dialog,.wrap{cursor:auto;}.app :is(button,a,summary,select),.help-dialog :is(button,a,summary,select),.wrap :is(button,a){cursor:pointer;}}

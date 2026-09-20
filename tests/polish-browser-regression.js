@@ -1,0 +1,50 @@
+async (page) => {
+ const context=await page.context().browser().browserType().launchPersistentContext('/private/tmp/aside-polish-'+Date.now(),{timeout:20000,headless:true,viewport:null,colorScheme:'light',executablePath:'/Users/qianruimin/Library/Caches/ms-playwright/chromium-1217/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',args:['--window-size=1280,880','--disable-extensions-except=/private/tmp/aside-172-extension-fixture','--load-extension=/private/tmp/aside-172-extension-fixture']});
+ const check=(v,m)=>{if(!v)throw Error(m);};const errors=[];
+ try {
+  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker',{timeout:15000});
+  await context.route('https://example.test/**',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><head><meta charset="utf-8"><title>普通文章网页</title><style>body{font:18px system-ui;padding:50px;background:#f4f3ed;color:#333}h1{font-size:40px}p{max-width:500px;line-height:2}textarea{width:300px;height:80px}</style></head><body><h1>一篇普通的文章</h1><p>这里没有视频。打开旁白时，网页应保持原有大小，记录库浮在页面之上。</p><textarea placeholder="网页自己的输入框"></textarea></body></html>'}));
+  await worker.evaluate(()=>chrome.storage.local.set({movieNotes:[{id:'s',movieTitle:'一段访谈里的灵感',videoUrl:'https://www.youtube.com/watch?v=x',createdAt:new Date().toISOString(),entries:[{id:'e',content:'一个想法，也值得留下。',createdAt:new Date().toISOString()}]}]}));
+  const ordinary=await context.newPage();ordinary.on('pageerror',e=>errors.push(e.message));await ordinary.goto('https://example.test/article');
+  const tab=await worker.evaluate(async()=>(await chrome.tabs.query({url:'https://example.test/*'}))[0]);
+  const originalWidth=await ordinary.locator('body').evaluate(b=>b.clientWidth);
+  await worker.evaluate(tab=>globalThis.__testToolbar(tab),tab);
+  const host=ordinary.locator('#aside-library-host');await host.waitFor({timeout:7000});check(await ordinary.locator('body').evaluate(b=>b.clientWidth)===originalWidth,'ordinary page squeezed');
+  const f=ordinary.frameLocator('#aside-library-host iframe');await f.locator('.movie-card').waitFor();
+  await ordinary.mouse.move(20,20);check(await f.locator('.movie-card__detail').evaluate(e=>getComputedStyle(e).opacity)==='0','detail always visible');
+  await f.locator('.movie-card').hover();await f.locator('.movie-card__detail').evaluate(e=>e.getAnimations().forEach(a=>a.finish()));check(await f.locator('.movie-card__detail').evaluate(e=>getComputedStyle(e).opacity)==='1','detail not shown on hover');
+  check(await f.locator('#tabList').evaluate(e=>getComputedStyle(e,'::after').top)==='0px','nav mark not above');
+  await ordinary.screenshot({path:'/Users/qianruimin/movie-notes/design-preview/10-nonvideo-overlay.png'});
+  await f.locator('#btnOnboardToggle').click();const icon=await f.locator('#btnCloseHelp svg').boundingBox(),button=await f.locator('#btnCloseHelp').boundingBox();check(Math.abs(icon.x+icon.width/2-button.x-button.width/2)<1 && Math.abs(icon.y+icon.height/2-button.y-button.height/2)<1,'close icon not centered');
+  await f.locator('.help-shortcuts summary').click();await ordinary.screenshot({path:'/Users/qianruimin/movie-notes/design-preview/11-shortcut-help.png'});await f.locator('#btnCloseHelp').click();
+  await f.locator('#btnCaptureCurrent').click();check(!await f.locator('#entryContent').evaluate(e=>e===document.activeElement),'mouse entry auto-focused');check(await f.locator('#btnSave').isDisabled(),'empty save enabled');
+  await f.locator('#entryContent').click();await ordinary.keyboard.press('Meta+Enter');check(await f.locator('#errContent').textContent()==='','empty form shows error');
+  await f.locator('#entryContent').fill('n / ? 这些只是输入的文字');check(await f.locator('#viewNew').evaluate(e=>e.classList.contains('view--active')),'typing triggered shortcuts');
+  const area=await f.locator('#entryContent').boundingBox(),count=await f.locator('#wordCount').boundingBox();check(count.y>area.y && count.y+count.height<area.y+area.height && count.x>area.x+area.width/2,'count outside textarea');
+  check(await f.locator('#viewNew .shortcut-hint').count()===0,'unexplained save hint remains');
+  await f.locator('#btnBackFromNew').click();await f.locator('.library-intro h1').click();await ordinary.keyboard.press('/');check(await f.locator('#searchInput').evaluate(e=>e===document.activeElement),'slash search failed');
+  await ordinary.keyboard.type('n?');check(await f.locator('#onboardBanner').isHidden(),'search input stole question mark');await f.locator('#searchInput').fill('');await f.locator('.library-intro h1').click();await ordinary.keyboard.press('?');check(await f.locator('#onboardBanner').isVisible(),'help key failed');await ordinary.keyboard.press('Escape');
+  await f.locator('#btnCloseLibrary').click();await host.waitFor({state:'hidden'});
+  await worker.evaluate(tab=>globalThis.__testToolbar(tab),tab);await host.waitFor();
+  check(await ordinary.locator('#aside-library-host').count()===1,'toolbar duplicated overlay');
+  const expanded=context.waitForEvent('page');await f.locator('#btnOpenFull').click();const full=await expanded;
+  await full.locator('.movie-card').waitFor();await host.waitFor({state:'hidden'});
+  check(full.url().includes('sourceTab='+tab.id) && !full.url().includes('reason='),'explicit full tab lost source');
+  check(await full.locator('#surfaceNotice').isHidden(),'explicit full tab has restriction notice');
+  const fullWindow=await full.evaluate(()=>chrome.windows.getCurrent());check(fullWindow.id===tab.windowId && fullWindow.type==='normal','expand opened separate window');
+  const restricted=await context.newPage();await restricted.goto('chrome://version');const restrictedTab=await worker.evaluate(async()=>(await chrome.tabs.query({})).find(t=>t.url==='chrome://version/'));
+  const windowCount=await worker.evaluate(async()=>(await chrome.windows.getAll()).length);
+  check(restrictedTab,'restricted test page missing');const opened=context.waitForEvent('page');await worker.evaluate(tab=>globalThis.__testToolbar(tab),restrictedTab);const fallback=await opened;await fallback.locator('.movie-card').waitFor();
+  check(fallback.url().includes('reason=restricted') && !fallback.url().includes('windowed='),'restricted page did not open full tab');
+  const win=await fallback.evaluate(()=>chrome.windows.getCurrent());check(win.type==='normal' && win.id===restrictedTab.windowId,'fallback opened separate window');
+  check(await fallback.locator('#surfaceNotice').isVisible(),'fallback reason missing');check(await fallback.locator('#btnCloseLibrary').isHidden(),'full tab has floating close');
+  await fallback.screenshot({path:'/Users/qianruimin/movie-notes/design-preview/13-restricted-page-library.png'});
+  const pageCount=context.pages().length;await restricted.bringToFront();await worker.evaluate(tab=>globalThis.__testToolbar(tab),restrictedTab);
+  check(context.pages().length===pageCount,'fallback created duplicate tab');
+  const active=await worker.evaluate(async windowId=>(await chrome.tabs.query({windowId,active:true}))[0],restrictedTab.windowId);check(active.url===fallback.url(),'fallback did not activate existing tab');
+  check(await worker.evaluate(async()=>(await chrome.windows.getAll()).length)===windowCount,'library created browser window');
+  await fallback.locator('#btnCaptureCurrent').click();await fallback.screenshot({path:'/Users/qianruimin/movie-notes/design-preview/12-light-editor.png'});
+  check(!errors.length,errors.join('\n'));
+  return {passed:['ordinary non-video page injects overlay','page width unchanged','detail hover only','nav indicator top','close icon centered','no mouse autofocus','empty submit quiet','word count inside','no raw save hint','local shortcuts and typing isolation','toolbar reopens same overlay','explicit full tab remains available','restricted-page fallback uses same browser window','restricted-page reason displayed','fallback reuses existing tab','no separate window created'],pageErrors:errors};
+ }finally{await context.close();}
+}

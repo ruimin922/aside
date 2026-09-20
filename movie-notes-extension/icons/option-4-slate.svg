@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 石板蓝 · 电影屏幕 + 星夜 -->
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#3B5998"/>
+      <stop offset="100%" stop-color="#2C3E6B"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="url(#bg4)"/>
+
+  <!-- 星星点缀 -->
+  <circle cx="90" cy="24" r="1.5" fill="#ffffff" opacity="0.7"/>
+  <circle cx="100" cy="36" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="108" cy="22" r="1" fill="#ffffff" opacity="0.4"/>
+  <circle cx="82" cy="16" r="1" fill="#ffffff" opacity="0.55"/>
+
+  <!-- 屏幕/书页 -->
+  <rect x="22" y="38" width="84" height="60" rx="6" fill="#ffffff" opacity="0.1"/>
+  <rect x="22" y="38" width="84" height="60" rx="6" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4"/>
+
+  <!-- 屏幕内容：月亮 + 山 -->
+  <circle cx="80" cy="58" r="12" fill="#ffffff" opacity="0.18"/>
+  <circle cx="87" cy="54" r="9" fill="#2C3E6B" opacity="0.7"/>
+
+  <!-- 山形 -->
+  <polygon points="28,98 52,62 68,82 80,68 106,98" fill="#ffffff" opacity="0.12"/>
+  <polygon points="28,98 52,66 68,84" fill="#ffffff" opacity="0.08"/>
+
+  <!-- 底部笔记线（屏幕下方） -->
+  <rect x="32" y="106" width="40" height="3" rx="1.5" fill="#ffffff" opacity="0.35"/>
+  <rect x="32" y="114" width="26" height="3" rx="1.5" fill="#ffffff" opacity="0.2"/>
+</svg>

@@ -1,0 +1,89 @@
+{
+  "name": "旁白 Aside — 视频灵感记录",
+  "description": "看电影、访谈和视频播客时，留下一个观点、一句台词，或你的想法。用视频时间点找回灵感，随时回顾、整理和导出。",
+  "version": "1.9.0",
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1eyNIYEXe4tSOMsJqZaVNag8G8wl5HShqVBikd6rN2UrT3kXclyyEiGM/dd+ygcJrX2daphVBcgre/G6DyAI+E0I/7Rmd9Spwd5e1PhuQ4XwU2JcT1uIxrKp2gcICiMSyEHQMXVlWVjrxEzdQnNo0AF8U34BMo93kH9NefU37vARc5ZUKzW9sGvWE8ocPtwDuEVcG73UZnawo+u6oym9VCrj6bZ3itzNDRxxnR3Ga+qwL9m3/jlQZjMq/voyD6aTfi+3vJH6Tavjz8TrW/O8nxgycnEcf+j0HhPT6gzBmbctU24KzQ+7cbVPW4NqDctXNkb6a2EXUS1TWfFk7U9CrQIDAQAB",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab",
+    "tabs",
+    "identity",
+    "alarms",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "*://*.bilibili.com/*",
+    "*://*.iqiyi.com/*",
+    "*://*.youku.com/*",
+    "*://*.mgtv.com/*",
+    "*://*.v.qq.com/*",
+    "https://api.notion.com/*",
+    "https://*.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "旁白 Aside",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.bilibili.com/*",
+        "*://*.iqiyi.com/*",
+        "*://*.youku.com/*",
+        "*://*.mgtv.com/*",
+        "*://*.v.qq.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;"
+  },
+  "minimum_chrome_version": "116",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "panel.html",
+        "icons/icon32.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+L",
+        "mac": "Alt+L"
+      }
+    },
+    "quick-note": {
+      "suggested_key": {
+        "default": "Alt+N",
+        "mac": "Alt+N"
+      },
+      "description": "打开或聚焦快速记录"
+    }
+  }
+}

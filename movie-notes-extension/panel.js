@@ -1,3 +1,4 @@
+import { extractNotionPageId, createNotionPageWithMarkdown, verifyNotionConnection, describeNotionError } from "./utils/notion.js";
 import { bindHelpSnap } from "./utils/help-snap.js";
 import { isSupportedUrl, videoIdentity } from "./utils/platform.js";
 import { getOwner } from "./utils/local-data.js";
@@ -391,7 +392,7 @@ const el = {
   notionToken: $("notionToken"),
   notionParentId: $("notionParentId"),
   btnSaveNotionConfig: $("btnSaveNotionConfig"),
-  btnTestNotionConfig: $("btnTestNotionConfig"),
+
   btnToggleNotion: $("btnToggleNotion"),
   btnToggleToken: $("btnToggleToken"),
   notionSettingsBody: $("notionSettingsBody"),
@@ -605,134 +606,6 @@ function applyV14MovieTagPill(node, text) {
   node.className = "v14-pill v14-pill--movie";
 }
 
-function extractNotionPageId(raw) {
-  const s = String(raw || "").trim();
-  // 优先匹配带连字符的 UUID
-  const uuidM = s.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-  if (uuidM) return uuidM[1];
-  // 兼容 Notion URL 末尾 32 位十六进制（无连字符），自动补全为 UUID 格式
-  const hexM = s.match(/([0-9a-f]{32})(?:[^0-9a-f]|$)/i);
-  if (hexM) {
-    const h = hexM[1].toLowerCase();
-    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-  }
-  return s;
-}
-
-function chunkNotionText(s, max = 2000) {
-  const out = [];
-  let t = String(s || "");
-  while (t.length) {
-    out.push(t.slice(0, max));
-    t = t.slice(max);
-  }
-  return out.length ? out : [""];
-}
-
-/**
- * 将 Markdown 内联样式转换成 Notion rich_text 数组。
- * 支持 **bold** 和 *italic*，其余作为普通文本处理。
- */
-function parseInlineRichText(text) {
-  const result = [];
-  const s = String(text || "");
-  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*|([^*]+)/g;
-  let m;
-  while ((m = re.exec(s)) !== null) {
-    if (m[1] !== undefined) {
-      for (const c of chunkNotionText(m[1])) {
-        result.push({ type: "text", text: { content: c }, annotations: { bold: true } });
-      }
-    } else if (m[2] !== undefined) {
-      for (const c of chunkNotionText(m[2])) {
-        result.push({ type: "text", text: { content: c }, annotations: { italic: true } });
-      }
-    } else if (m[3] !== undefined) {
-      for (const c of chunkNotionText(m[3])) {
-        result.push({ type: "text", text: { content: c } });
-      }
-    }
-  }
-  if (!result.length) result.push({ type: "text", text: { content: " " } });
-  return result;
-}
-
-/**
- * 将 Markdown 字符串解析为 Notion Block 数组。
- * 支持：标题(#/##/###)、分隔线(---)、引用块(>)、无序列表(- *)、粗斜体段落。
- */
-function markdownToNotionBlocks(md) {
-  const lines = String(md || "").split("\n");
-  const blocks = [];
-  let pendingLines = [];
-
-  function flushPending() {
-    if (!pendingLines.length) return;
-    const text = pendingLines.join("\n").trim();
-    pendingLines = [];
-    if (!text) return;
-    for (const chunk of chunkNotionText(text)) {
-      blocks.push({
-        object: "block",
-        type: "paragraph",
-        paragraph: { rich_text: parseInlineRichText(chunk) }
-      });
-    }
-  }
-
-  for (const line of lines) {
-    // heading_1: `# text` (not `## text`)
-    let m;
-    if ((m = line.match(/^# (.+)/)) && !line.startsWith("## ")) {
-      flushPending();
-      blocks.push({ object: "block", type: "heading_1", heading_1: { rich_text: parseInlineRichText(m[1]) } });
-      continue;
-    }
-    // heading_2: `## text` (not `### text`)
-    if ((m = line.match(/^## (.+)/)) && !line.startsWith("### ")) {
-      flushPending();
-      blocks.push({ object: "block", type: "heading_2", heading_2: { rich_text: parseInlineRichText(m[1]) } });
-      continue;
-    }
-    // heading_3: `### text`
-    if ((m = line.match(/^### (.+)/))) {
-      flushPending();
-      blocks.push({ object: "block", type: "heading_3", heading_3: { rich_text: parseInlineRichText(m[1]) } });
-      continue;
-    }
-    // divider: `---`
-    if (/^-{3,}$/.test(line.trim())) {
-      flushPending();
-      blocks.push({ object: "block", type: "divider", divider: {} });
-      continue;
-    }
-    // blockquote: `> text`
-    if ((m = line.match(/^> (.+)/))) {
-      flushPending();
-      blocks.push({ object: "block", type: "quote", quote: { rich_text: parseInlineRichText(m[1]) } });
-      continue;
-    }
-    // bulleted list: `- text` or `* text`
-    if ((m = line.match(/^[-*] (.+)/))) {
-      flushPending();
-      blocks.push({ object: "block", type: "bulleted_list_item", bulleted_list_item: { rich_text: parseInlineRichText(m[1]) } });
-      continue;
-    }
-    // blank line → flush accumulated paragraph
-    if (line.trim() === "") {
-      flushPending();
-      continue;
-    }
-    // regular text → accumulate into paragraph
-    pendingLines.push(line);
-  }
-  flushPending();
-
-  return blocks.length
-    ? blocks
-    : [{ object: "block", type: "paragraph", paragraph: { rich_text: [{ type: "text", text: { content: " " } }] } }];
-}
-
 /** 构建视频时间戳深链（YouTube/Bilibili 精确秒，其他返回原 URL） */
 function buildTimestampDeepLink(videoUrl, timeSec) {
   if (!videoUrl || timeSec == null || typeof timeSec !== "number") return videoUrl || null;
@@ -803,57 +676,7 @@ function exportMovieToNotionMarkdown(note) {
   return md;
 }
 
-async function notionApiRequest(token, path, method = "POST", body, _attempt = 0) {
-  const res = await fetch(`https://api.notion.com/v1${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Notion-Version": "2022-06-28",
-      "Content-Type": "application/json"
-    },
-    body: body != null ? JSON.stringify(body) : undefined
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data?.message || data?.code || res.statusText || "Notion 请求失败";
-    const retryable = (res.status === 429 || res.status >= 500) && _attempt < 3;
-    if (retryable) {
-      const retryAfter = parseInt(res.headers.get("Retry-After") || "0", 10);
-      const delay = retryAfter > 0 ? retryAfter * 1000 : Math.pow(2, _attempt) * 1000;
-      await new Promise((r) => setTimeout(r, delay));
-      return notionApiRequest(token, path, method, body, _attempt + 1);
-    }
-    throw new Error(msg);
-  }
-  return data;
-}
 
-async function appendNotionBlocks(token, blockId, blocks) {
-  const batchSize = 100;
-  for (let i = 0; i < blocks.length; i += batchSize) {
-    const slice = blocks.slice(i, i + batchSize);
-    await notionApiRequest(token, `/blocks/${blockId}/children`, "PATCH", { children: slice });
-  }
-}
-
-async function createNotionPageWithMarkdown(token, parentPageId, title, markdown) {
-  const parent = extractNotionPageId(parentPageId);
-  const allBlocks = markdownToNotionBlocks(markdown);
-  const first = allBlocks.slice(0, 100);
-  const rest = allBlocks.slice(100);
-  const page = await notionApiRequest(token, "/pages", "POST", {
-    parent: { page_id: parent },
-    properties: {
-      title: {
-        title: [{ text: { content: String(title || "未命名").slice(0, 2000) } }]
-      }
-    },
-    children: first
-  });
-  const pageId = page?.id;
-  if (pageId && rest.length) await appendNotionBlocks(token, pageId, rest);
-  return page;
-}
 
 function countChars(s) {
   return Array.from(s || "").length;
@@ -1013,20 +836,76 @@ async function onExportModalMarkdown() {
   }
 }
 
-/** 更新折叠头部的状态徽章，并决定初始展开状态 */
+let savedNotionConfig = {};
+let notionConnectBusy = false;
+let notionConfigDirty = false;
+let pendingNotionExport = null;
+function notionInputsChanged() {
+  return el.notionToken.value.trim() !== (savedNotionConfig.token || '') ||
+    (extractNotionPageId(el.notionParentId.value) || el.notionParentId.value.trim()) !== (extractNotionPageId(savedNotionConfig.parentPageId) || savedNotionConfig.parentPageId || '');
+}
 function updateNotionBadge(cfg) {
-  const configured = !!(cfg?.token && cfg?.parentPageId);
+  savedNotionConfig = cfg;
   const badge = el.notionStatusBadge;
-  if (!badge) return;
   badge.hidden = false;
-  if (configured) {
-    badge.textContent = "已配置";
-    badge.className = "notion-settings__badge";
-  } else {
-    badge.textContent = "未设置";
-    badge.className = "notion-settings__badge notion-settings__badge--none";
+  badge.className = 'notion-settings__badge';
+  badge.textContent = cfg?.token && cfg?.parentPageId ? (cfg.verifiedAt ? '已验证写入' : '待验证写入') : '未连接';
+  $('btnDisconnectNotion').hidden = !cfg?.token;
+}
+function notionPageUrl(id) {
+  const parsed = extractNotionPageId(id);
+  return parsed ? `https://www.notion.so/${parsed.replaceAll('-', '')}` : '';
+}
+function renderNotionFeedback(title, message, { error, links = [], lines = [] } = {}) {
+  const box = $('notionConnectionStatus');
+  box.replaceChildren(); box.hidden = false;
+  box.dataset.kind = error ? 'error' : 'info';
+  const heading = document.createElement('strong'); heading.textContent = title; box.append(heading);
+  const copy = document.createElement('p'); copy.textContent = message; box.append(copy);
+  if (lines.length) {
+    const list = document.createElement('ul');
+    for (const line of lines) { const li = document.createElement('li'); li.textContent = line; list.append(li); }
+    box.append(list);
   }
-  // Configuration opens only after an explicit request.
+  for (const {id, label} of links) {
+    const url = notionPageUrl(id); if (!url) continue;
+    const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.rel = 'noreferrer';
+    link.textContent = label; box.append(link);
+  }
+  if (error?.code || error?.status) {
+    const details = document.createElement('details'); const summary = document.createElement('summary');
+    summary.textContent = '错误详情'; const pre = document.createElement('pre');
+    // Never render credentials, even if a remote validation message echoes input.
+    let detail = `${error.status || ''} ${error.code || ''}\n${error.message || ''}`;
+    for (const secret of [el.notionToken.value.trim(), savedNotionConfig.token]) if (secret) detail = detail.split(secret).join('[已隐藏]');
+    pre.textContent = detail; details.append(summary, pre); box.append(details);
+  }
+}
+async function connectNotion() {
+  if (notionConnectBusy || notionExportBusy) return;
+  notionConnectBusy = true;
+  const token = el.notionToken.value.trim(), parent = el.notionParentId.value.trim();
+  const button = el.btnSaveNotionConfig;
+  const controls = [button, el.notionToken, el.notionParentId, el.btnToggleToken, $('btnDisconnectNotion')];
+  controls.forEach(control => control.disabled = true);
+  button.textContent = '正在验证…';
+  renderNotionFeedback('正在验证', '检查目标页面，并创建测试页面以确认写入权限。');
+  let verified;
+  try {
+    const owner = await getOwner();
+    verified = await verifyNotionConnection(token, parent);
+    const saved = await saveNotionConfig(verified, owner);
+    el.notionToken.value = saved.token; el.notionParentId.value = notionPageUrl(saved.parentPageId);
+    el.notionToken.type = 'password'; el.btnToggleToken.textContent = '显示'; el.btnToggleToken.setAttribute('aria-label', '显示连接密钥');
+    notionConfigDirty = false; updateNotionBadge(saved);
+    renderNotionFeedback('已连接 · 可以导出', `目标页面：${saved.parentTitle}。已实际写入测试页面，设置已保存。`, {links:[{id:saved.parentPageId,label:'打开目标页面 ↗'},{id:verified.testPageId,label:'查看连接测试 ↗'}]});
+    $('btnResumeNotionExport').hidden = !pendingNotionExport;
+  } catch (error) {
+    el.notionStatusBadge.textContent = verified ? '尚未保存' : '验证未通过';
+    renderNotionFeedback(verified ? '已验证，但设置未保存' : '尚未连接', verified ? '浏览器未能保存设置。目标页面中已生成连接测试；请先检查浏览器存储后再试。' : describeNotionError(error), {error, links:[{id:verified?.testPageId || error.partialPageId,label:'查看已生成的页面 ↗'}]});
+  } finally {
+    notionConnectBusy = false; controls.forEach(control => control.disabled = false); button.textContent = '验证并连接';
+  }
 }
 
 function openNotionSettings() {
@@ -1044,84 +923,63 @@ function closeNotionSettings() {
   el.notionSettingsBody.inert = true;
   el.notionToken.type = "password";
   el.btnToggleToken.textContent = "显示";
+  el.btnToggleToken.setAttribute("aria-label", "显示连接密钥");
   el.notionSettingsBody.classList.remove("notion-settings__body--open");
   el.btnToggleNotion.setAttribute("aria-expanded", "false");
 }
 
 let notionExportBusy = false;
 async function onExportModalNotion(button = el.btnExportNotion) {
-  if (notionExportBusy) return;
+  if (notionExportBusy || notionConnectBusy) return;
   notionExportBusy = true;
   const mode = exportModalCtx.mode;
+  const previous = button?.innerHTML;
+  let cfg;
   try {
-    const cfg = await loadNotionConfig();
-    if (!cfg.token || !cfg.parentPageId) {
-      closeExportModal();
-      setView(VIEWS.STATS);
-      openNotionSettings();
-      el.btnToggleNotion.scrollIntoView({ block: "center" });
-      showToast("先配置 Notion，保存后即可导出", "warn");
+    cfg = await loadNotionConfig();
+    if (!cfg.token || !cfg.parentPageId || notionConfigDirty) {
+      pendingNotionExport = {mode, movie:state.detailMovie};
+      closeExportModal(); setView(VIEWS.STATS); openNotionSettings();
+      el.btnToggleNotion.scrollIntoView({block:'start'});
+      renderNotionFeedback('先连接，再导出', '完成下面两项信息，点击「验证并连接」。连接成功后可以继续这次导出。');
       return;
     }
-    const token = cfg.token;
-    const parentId = extractNotionPageId(cfg.parentPageId);
-    if (!parentId) {
-      showToast("父页面 ID 无效，请检查页面链接", "warn");
-      return;
-    }
-    const btn = button;
-    if (!btn) return;
-    btn.disabled = true;
-    const prev = btn.innerHTML;
-    btn.textContent = "写入中…";
-    try {
-      if (mode === "movie") {
-        const note = state.detailMovie;
-        if (!note) return;
-        btn.textContent = "写入中…";
-        await createNotionPageWithMarkdown(token, parentId, note.movieTitle, exportMovieToNotionMarkdown(note));
-        closeExportModal();
-        showToast("已写入 Notion ✓", "good", 4000);
-      } else {
-        const all = await getAllNotes();
-        let succeeded = 0;
-        const failedTitles = [];
-        for (const note of all) {
-          btn.textContent = `写入 ${succeeded + failedTitles.length + 1}/${all.length}…`;
-          try {
-            await createNotionPageWithMarkdown(token, parentId, note.movieTitle, exportMovieToNotionMarkdown(note));
-            succeeded++;
-          } catch (noteErr) {
-            console.warn("Notion export failed for", note.movieTitle, noteErr);
-            failedTitles.push(note.movieTitle);
-          }
-        }
-        closeExportModal();
-        if (!failedTitles.length) {
-          showToast(`已在 Notion 创建 ${succeeded} 个页面 ✓`, "good", 4000);
-        } else {
-          showToast(`成功 ${succeeded} 部，失败 ${failedTitles.length} 部，请稍后重试`, "warn", 4000);
-          console.warn("Notion export failures:", failedTitles);
-        }
+    if (button) {button.disabled = true; button.textContent = '正在导出…';}
+    const notes = mode === 'movie' ? [state.detailMovie].filter(Boolean) : await getAllNotes();
+    if (!notes.length) {showToast('还没有可导出的记录', 'warn'); return;}
+    const successes = [], failures = [];
+    let attempted = 0;
+    for (const note of notes) {
+      if (button) button.textContent = `正在导出 ${attempted + 1}/${notes.length}…`;
+      attempted++;
+      try {
+        const page = await createNotionPageWithMarkdown(cfg.token, cfg.parentPageId, note.movieTitle, exportMovieToNotionMarkdown(note));
+        successes.push({id:page.id,label:`${note.movieTitle} ↗`});
+      } catch (error) {
+        failures.push({title:note.movieTitle,error});
+        // Stop a batch on shared auth/network failures; retain completed-page links.
+        if ([401,403,404,429].includes(error.status) || ['preview','network','invalid_parent'].includes(error.code) || error.uncertainWrite) break;
       }
-    } catch (e) {
-      console.error(e);
-      const msg = e?.message || "Notion 写入失败";
-      // 常见错误给出更友好的提示
-      if (msg.includes("Could not find page") || msg.includes("object_not_found")) {
-        showToast("父页面不存在，或未授权给 Integration", "danger");
-      } else if (msg.includes("Unauthorized") || msg.includes("unauthorized")) {
-        showToast("Token 无效，请检查 Integration Secret", "danger");
-      } else {
-        showToast(msg, "danger");
-      }
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = prev;
-
     }
-  } catch { showToast("读取 Notion 配置失败，请重试", "danger"); }
-  finally { notionExportBusy = false; }
+    pendingNotionExport = null; $('btnResumeNotionExport').hidden = true;
+    closeExportModal(); setView(VIEWS.STATS); openNotionSettings();
+    const skipped = notes.length - attempted;
+    if (!failures.length) {
+      renderNotionFeedback(`已导出 ${successes.length} 个视频`, '每个视频已生成一个子页面。再次导出会新建页面，不会覆盖之前的内容。', {links:[{id:cfg.parentPageId,label:'打开目标页面 ↗'},...successes]});
+    } else {
+      const first = failures[0].error;
+      renderNotionFeedback(`已完成 ${successes.length} 个，失败 ${failures.length} 个${skipped ? `，未开始 ${skipped} 个` : ''}`,
+        describeNotionError(first), {error:first,links:[{id:cfg.parentPageId,label:'检查目标页面 ↗'},...successes,...failures.filter(item=>item.error.partialPageId).map(item=>({id:item.error.partialPageId,label:`查看未完整写入的「${item.title}」 ↗`}))],
+        lines:failures.map(item=>`${item.title}：${describeNotionError(item.error)}`)});
+    }
+    $('notionConnectionStatus').scrollIntoView({block:'center',behavior:'smooth'});
+  } catch (error) {
+    closeExportModal(); setView(VIEWS.STATS); openNotionSettings();
+    renderNotionFeedback('未能开始导出', '未能读取笔记或连接设置，请重试。', {error});
+  } finally {
+    notionExportBusy = false;
+    if (button) {button.disabled = false;button.innerHTML = previous;}
+  }
 }
 
 function setTimestampMode(mode) {
@@ -2728,9 +2586,16 @@ async function renderLog() {
 
   try {
     const notionCfg = await loadNotionConfig();
-    if (el.notionToken) el.notionToken.value = notionCfg.token;
-    if (el.notionParentId) el.notionParentId.value = notionCfg.parentPageId;
-    updateNotionBadge(notionCfg);
+    if (!notionConfigDirty && !notionConnectBusy) {
+      if (el.notionToken) el.notionToken.value = notionCfg.token;
+      if (el.notionParentId) el.notionParentId.value = notionPageUrl(notionCfg.parentPageId) || notionCfg.parentPageId;
+      updateNotionBadge(notionCfg);
+      if ($('notionConnectionStatus').hidden && notionCfg.token) {
+        renderNotionFeedback(notionCfg.verifiedAt ? '上次已验证写入' : '已保存 · 写入尚未验证',
+          notionCfg.verifiedAt ? `目标页面：${notionCfg.parentTitle || '未命名页面'}。权限变更后请重新验证。` : '旧版只验证页面可读。点击「验证并连接」，确认可以实际创建笔记页面。',
+          {links:[{id:notionCfg.parentPageId,label:'打开目标页面 ↗'}]});
+      }
+    }
   } catch {
     // ignore
   }
@@ -2866,6 +2731,7 @@ function bindEvents() {
     const isHidden = input.type === "password";
     input.type = isHidden ? "text" : "password";
     el.btnToggleToken.textContent = isHidden ? "隐藏" : "显示";
+    el.btnToggleToken.setAttribute("aria-label", isHidden ? "隐藏连接密钥" : "显示连接密钥");
   });
 
   // ⌘/Ctrl+Enter 在 Notion 设置展开区域内触发保存
@@ -2876,50 +2742,27 @@ function bindEvents() {
     }
   });
 
-  el.btnSaveNotionConfig?.addEventListener("click", async () => {
-    const token = (el.notionToken?.value || "").trim();
-    const parentPageId = (el.notionParentId?.value || "").trim();
-    try {
-      const saved = await saveNotionConfig({ token, parentPageId });
-      showToast("Notion 设置已保存", "good");
-      updateNotionBadge(saved);
-      // 保存成功后收起面板
-      if (token && parentPageId) closeNotionSettings();
-    } catch (e) {
-      console.error(e);
-      showToast("保存失败", "danger");
-    }
+  el.btnSaveNotionConfig?.addEventListener('click', connectNotion);
+  for (const input of [el.notionToken, el.notionParentId]) input.addEventListener('input', () => {
+    notionConfigDirty = notionInputsChanged();
+    el.notionStatusBadge.textContent = notionConfigDirty ? '尚未保存' : (savedNotionConfig.verifiedAt ? '已验证写入' : '待验证写入');
+    $('btnResumeNotionExport').hidden = true;
+    renderNotionFeedback('连接信息已更改', '点击「验证并连接」后生效。导出不会使用未验证的新设置。');
   });
-
-  el.btnTestNotionConfig?.addEventListener("click", async () => {
-    const token = (el.notionToken?.value || "").trim();
-    const parentPageId = (el.notionParentId?.value || "").trim();
-    if (!token || !parentPageId) {
-      showToast("请先填写 Token 和父页面 ID", "warn");
-      return;
-    }
-    const btn = el.btnTestNotionConfig;
-    btn.disabled = true;
-    const prev = btn.textContent;
-    btn.textContent = "验证中…";
+  $('btnDisconnectNotion').addEventListener('click', async () => {
+    if (notionConnectBusy || notionExportBusy) return;
     try {
-      const pageId = extractNotionPageId(parentPageId);
-      await notionApiRequest(token, `/pages/${pageId}`, "GET");
-      showToast("连接成功 ✓ 页面可访问", "good");
-    } catch (e) {
-      console.error(e);
-      const msg = e?.message || "";
-      if (msg.includes("object_not_found") || msg.includes("Could not find")) {
-        showToast("页面不存在，或未授权给 Integration", "danger");
-      } else if (msg.includes("Unauthorized") || msg.includes("unauthorized")) {
-        showToast("Token 无效，请检查 Integration Secret", "danger");
-      } else {
-        showToast(`连接失败：${msg}`, "danger");
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = prev;
-    }
+      const saved = await saveNotionConfig({token:'',parentPageId:''});
+      el.notionToken.value = ''; el.notionParentId.value = ''; notionConfigDirty = false; updateNotionBadge(saved);
+      $('btnResumeNotionExport').hidden = true;
+      renderNotionFeedback('连接已清除', '此浏览器中保存的密钥已清除。Notion 中已有的页面保持不变。');
+    } catch { renderNotionFeedback('未能清除连接', '浏览器未能保存更改，请重试。'); }
+  });
+  $('btnResumeNotionExport').addEventListener('click', async event => {
+    if (!pendingNotionExport) return;
+    exportModalCtx.mode = pendingNotionExport.mode;
+    if (pendingNotionExport.mode === 'movie') state.detailMovie = pendingNotionExport.movie;
+    await onExportModalNotion(event.currentTarget);
   });
 
   el.modePoint.addEventListener("click", () => {

@@ -525,18 +525,22 @@ export async function loadNotionConfig() {
     if (!c || typeof c !== "object") return { token: "", parentPageId: "" };
     return {
       token: String(c.token || "").trim(),
-      parentPageId: String(c.parentPageId || "").trim()
+      parentPageId: String(c.parentPageId || "").trim(),
+      parentTitle: String(c.parentTitle || ""),
+      verifiedAt: String(c.verifiedAt || "")
     };
   } catch {
     return { token: "", parentPageId: "" };
   }
 }
 
-async function saveNotionConfigUnlocked(cfg) {
+async function saveNotionConfigUnlocked(cfg, expectedOwner) {
+  if (expectedOwner != null && await getOwner() !== expectedOwner) throw new Error("账号已切换，请在当前账号重新连接");
   const token = String(cfg?.token || "").trim();
   const parentPageId = String(cfg?.parentPageId || "").trim();
-  await localData.set({ [NOTION_KEY]: { token, parentPageId } });
-  return { token, parentPageId };
+  const value = { token, parentPageId, parentTitle: String(cfg?.parentTitle || ""), verifiedAt: String(cfg?.verifiedAt || "") };
+  await localData.set({ [NOTION_KEY]: value });
+  return value;
 }
 
 export function saveEntry(...args) { return withDataLock(() => saveEntryUnlocked(...args)); }

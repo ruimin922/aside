@@ -1,6 +1,6 @@
 (() => {
-if (globalThis.__asideContentLoaded === '1.9.0') return;
-globalThis.__asideContentLoaded = '1.9.0';
+if (globalThis.__asideContentLoaded === '1.9.1') return;
+globalThis.__asideContentLoaded = '1.9.1';
 const nativeShortcuts = Boolean(chrome.runtime.getManifest?.().commands?.['quick-note']);
 function formatSeconds(sec) {
   if (typeof sec !== "number" || Number.isNaN(sec)) return null;

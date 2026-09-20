@@ -415,3 +415,24 @@ html[data-theme="light"] .home-landscape__far {opacity:.75;}
 @media(max-width:480px){.home-landscape__sun{right:13%;top:49%;width:52px;}.home-landscape__hills{height:48%;}}
 @media(prefers-reduced-motion:reduce){.home-landscape{transition:none;}}
 @media(forced-colors:active){.home-landscape{display:none;}}
+
+/* Notion is a guided connection flow, with persistent, actionable feedback. */
+.notion-intro {font-size:var(--type-ui);color:var(--text);margin:8px 0 24px;}
+.notion-steps {list-style:none;counter-reset:notion-step;padding:0;margin:0;}
+.notion-steps>li {position:relative;counter-increment:notion-step;padding:0 0 24px 34px;}
+.notion-steps>li::before {content:counter(notion-step);position:absolute;left:0;top:0;width:22px;height:22px;border:1px solid var(--border-strong);border-radius:50%;color:var(--accent);text-align:center;font-size:12px;line-height:21px;}
+.notion-steps h3 {font-size:var(--type-ui);font-weight:500;margin:0 0 8px;}
+.notion-steps p {font-size:var(--type-meta);color:var(--text-secondary);line-height:1.8;margin:6px 0 12px;max-width:64ch;}
+.notion-steps strong {font-weight:500;color:var(--text);}
+.notion-steps .input {width:100%;min-width:0;margin-top:4px;}
+.notion-token-row {display:flex;align-items:center;gap:8px;}
+.notion-token-row .input {flex:1;}
+.notion-settings__actions {display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:16px;}
+.notion-feedback {padding:14px 16px;margin:0 0 16px;border-left:2px solid var(--accent);border-radius:0 8px 8px 0;background:var(--accent-soft);font-size:var(--type-meta);line-height:1.8;overflow-wrap:anywhere;}
+.notion-feedback[data-kind="error"] {border-left-color:var(--danger);}
+.notion-feedback p {margin:4px 0;}
+.notion-feedback a {display:inline-block;margin:6px 12px 0 0;color:var(--accent);}
+.notion-feedback details {margin-top:8px;color:var(--text-secondary);}
+.notion-feedback pre {font:inherit;white-space:pre-wrap;word-break:break-word;}
+.notion-feedback ul {margin:8px 0;padding-left:18px;}
+@media(max-width:420px) {#notionSettingsBody .notion-settings__body-inner{padding:4px 8px 16px;}.notion-steps>li{padding-left:28px;}.notion-settings__actions .primary-action{width:100%;}}

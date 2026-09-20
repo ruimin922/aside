@@ -373,7 +373,7 @@
                 <span><span class="settings-row__name">导出到 Notion</span><span class="export-choice__hint">全部笔记，按视频生成页面</span></span><span class="export-choice__icon" aria-hidden="true">↗</span>
               </button>
               <button type="button" class="settings-row settings-row--btn" id="btnToggleNotion" aria-expanded="false" aria-controls="notionSettingsBody">
-                <span class="settings-row__name">Notion 配置</span>
+                <span class="settings-row__name">连接 Notion</span>
                 <div class="settings-row__right">
                   <span class="notion-settings__badge" id="notionStatusBadge" hidden></span>
                   <svg class="notion-settings__chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -383,24 +383,37 @@
               </button>
               <div class="notion-settings__body" id="notionSettingsBody" hidden inert>
                 <div class="notion-settings__body-inner">
-                  <p class="notion-settings__hint">
-                    在 Notion 创建
-                    <a href="https://www.notion.so/my-integrations" target="_blank" rel="noreferrer" class="text-link">Integration</a>，
-                    在目标页面「连接」中授权，然后填入 Secret 并粘贴页面链接。
-                  </p>
-                  <label class="label label--small" for="notionToken">Integration Secret</label>
-                  <div class="notion-token-row">
-                    <input id="notionToken" class="input" type="password" autocomplete="off" placeholder="secret_…" />
-                    <button type="button" class="notion-token-toggle" id="btnToggleToken">显示</button>
-                  </div>
-                  <p class="notion-settings__security-hint">Token 保存在本机存储中。建议创建仅限「读写」权限的 Internal Integration，勿使用拥有完整权限的账号级 Token。</p>
-                  <label class="label label--small" for="notionParentId">父页面</label>
-                  <input id="notionParentId" class="input" type="text" autocomplete="off" placeholder="粘贴 Notion 页面链接即可" style="margin-top: var(--space-2)" />
-                  <div class="notion-settings__actions">
-                    
-                    <button type="button" class="text-link" id="btnTestNotionConfig">测试连接</button>
-                    <button type="button" class="text-link text-link--strong" id="btnSaveNotionConfig">保存设置</button>
-                  </div>
+                  <p class="notion-intro">把视频和想法，存进你选定的 Notion 页面。</p>
+                  <ol class="notion-steps">
+                    <li>
+                      <h3>获取连接密钥</h3>
+                      <p>在 <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noreferrer" class="text-link">Notion 连接管理 ↗</a> 创建内部连接（Internal），选择你的工作区。若无法创建，请联系该工作区的所有者。</p>
+                      <p>在 Capabilities 中勾选 <strong>Read content</strong> 和 <strong>Insert content</strong>；回到 Configuration，复制连接密钥。</p>
+                      <label class="label label--small" for="notionToken">连接密钥</label>
+                      <div class="notion-token-row">
+                        <input id="notionToken" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴 ntn_… 或 secret_…" aria-describedby="notionTokenHelp" />
+                        <button type="button" class="notion-token-toggle" id="btnToggleToken" aria-label="显示连接密钥">显示</button>
+                      </div>
+                      <p id="notionTokenHelp" class="notion-settings__security-hint">只保存在此浏览器中，不随笔记同步。无需填写 Notion 登录密码。</p>
+                    </li>
+                    <li>
+                      <h3>选择存放笔记的页面</h3>
+                      <p>在同一工作区新建普通页面，如「旁白记录」。打开右上角 <strong>··· → 连接 / Connections → 添加连接</strong>，选择刚才创建的连接。</p>
+                      <label class="label label--small" for="notionParentId">页面链接</label>
+                      <input id="notionParentId" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.notion.so/…" aria-describedby="notionPageHelp" />
+                      <p id="notionPageHelp">复制这个页面的链接粘贴到这里。每个视频会生成一个子页面；暂不支持数据库作为目标。</p>
+                    </li>
+                    <li>
+                      <h3>验证后即可导出</h3>
+                      <p>将在目标下创建「旁白连接测试」页面，确认可以写入后保存设置。测试不含你的笔记，可在 Notion 中自行删除。</p>
+                      <div class="notion-settings__actions">
+                        <button type="button" class="primary-action" id="btnSaveNotionConfig">验证并连接</button>
+                        <button type="button" class="text-link" id="btnDisconnectNotion" hidden>清除连接</button>
+                      </div>
+                    </li>
+                  </ol>
+                  <div id="notionConnectionStatus" class="notion-feedback" role="status" aria-live="polite" hidden></div>
+                  <button type="button" class="text-link text-link--strong" id="btnResumeNotionExport" hidden>继续刚才的导出</button>
                 </div>
               </div>
             </div>

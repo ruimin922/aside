@@ -42,6 +42,23 @@ async function account(id) {
 }
 beforeEach(() => { raw = {}; failRead = false; failThumb = false; });
 
+test('Notion configuration retains verification only when explicitly saved', async () => {
+  await storage.saveNotionConfig({token:'ntn_test',parentPageId:'page',parentTitle:'旁白记录',verifiedAt:'2026-09-20T00:00:00Z'});
+  assert.equal((await storage.loadNotionConfig()).parentTitle,'旁白记录');
+  assert.ok((await storage.loadNotionConfig()).verifiedAt);
+  await storage.saveNotionConfig({token:'ntn_new',parentPageId:'other'});
+  assert.equal((await storage.loadNotionConfig()).verifiedAt,'');
+  await account('another-owner');
+  assert.equal((await storage.loadNotionConfig()).token,'');
+});
+
+test('Notion verification cannot save credentials to a different account after sign-in', async () => {
+  const owner = await data.getOwner();
+  await account('new-owner');
+  await assert.rejects(storage.saveNotionConfig({token:'ntn_test',parentPageId:'page'},owner), /账号已切换/);
+  assert.equal((await storage.loadNotionConfig()).token,'');
+});
+
 test('legacy migration preserves original copy and assigns existing account', async () => {
   raw = { supabaseSession: { user: { id: 'A' } }, movieNotes: [{ id: 'old', entries: [] }] };
   assert.equal(await data.getOwner(), 'A');

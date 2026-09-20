@@ -68,6 +68,7 @@ test('toolbar reuses a content host, injects only when needed, and falls back on
   chrome.tabs.sendMessage=async(id,msg)=>{calls.push(['message',id,msg]);if(first){first=false;throw Error('no receiver');}return{success:true};};
   await actionClick({id:23});
   assert.deepEqual(calls.map(c=>c[0]),['message','inject','message']);
+  assert.deepEqual(calls[1][1].files,['player-dock.js','content.js']);
   calls.length=0;
   chrome.tabs.sendMessage=async()=>{throw Error('no receiver');};
   chrome.scripting.executeScript=async()=>{throw Error('restricted browser page');};
@@ -130,6 +131,7 @@ test('host commands require our extension page and an allowed action', async () 
   assert.equal(res.success,false);assert.equal(calls.length,0);
   res=await send({type:'MN_LIBRARY_ACTION',tabId:7,action:'quick'},{url:'chrome-extension://aside-test/panel.html?embedded=1'});
   assert.equal(res.success,true);assert.deepEqual(calls,[{id:7,msg:{type:'MN_LIBRARY_HOST',action:'quick'}}]);
+
 });
 
 test('browser shortcut routes once to top frame and uses active source tab', async () => {

@@ -81,7 +81,7 @@ async function toggleLibrary(tab) {
       try { result = await chrome.tabs.sendMessage(tab.id, command, {frameId:0}); }
       catch {
         try {
-          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['player-dock.js','content.js'] });
         } catch (error) {
           // Chrome can also deny injection in protected documents or through site permissions.
           if (/cannot access|extensions gallery cannot be scripted|missing host permission/i.test(error?.message || '')) {

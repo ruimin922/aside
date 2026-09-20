@@ -8,17 +8,14 @@ function previewFeedbackOwnsEvent(event) {
 }
 `;
   let output = source.replace('(() => {', '(() => {' + ownership)
-    .replace('const host = location.hostname;', "const host = 'www.youtube.com';");
+    .replace('const host = location.hostname;', "const host = ({youtube:'www.youtube.com',bilibili:'www.bilibili.com',iqiyi:'www.iqiyi.com',youku:'www.youku.com',mgtv:'www.mgtv.com',tencent:'v.qq.com'})[document.documentElement.dataset.previewSite] || 'www.youtube.com';");
   const handlers = [
-    '  const onDown = (e) => {',
     '  const onTopDown = (e) => {',
     '  const onClickOutside = (e) => {',
-    '  const onGlobalEsc = (e) => {',
     'function onGlobalAltN(e) {',
     '  resizeHandle.addEventListener("mousedown", (e) => {',
     "      grip.addEventListener('pointerdown', e => {",
     "        handle.addEventListener('pointerdown', e => {",
-    "document.addEventListener('keydown', e => {",
   ];
   for (const marker of handlers) {
     if (!output.includes(marker)) throw new Error(`Preview event adapter needs updating: ${marker}`);

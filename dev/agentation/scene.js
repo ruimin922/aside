@@ -20,6 +20,18 @@ video.play().catch(()=>{});
 setInterval(()=>draw(Math.floor(video.currentTime || 0)),500);
 const dispatch = message => window.__asidePreviewDispatch(message);
 const status = document.querySelector('#scene-status');
+// Opt-in hostile host CSS: catch website rules that leak into injected controls.
+// Kept in the development fixture only, never in the extension package.
+if (new URLSearchParams(location.search).has('hostStyles')) {
+  const interference = document.createElement('style');
+  interference.textContent = `
+    .scene-video button, .mn-qn button {appearance:auto!important;min-width:44px!important;padding:12px!important;background:#777!important;border:3px solid #aaa!important;line-height:3!important;}
+    .scene-video svg, .mn-qn svg {display:inline!important;width:12px!important;height:32px!important;background:#aaa!important;fill:#aaa!important;}
+    .scene-video svg path, .mn-qn svg path {fill:#aaa!important;stroke:transparent!important;}
+    .mn-qn textarea {font:30px/3 serif!important;color:red!important;}
+  `;
+  document.head.append(interference);
+}
 async function act(message) {
   try { const result=await dispatch(message);status.textContent=result?.success===false ? result.error : ''; }
   catch(error){status.textContent=error.message;}
@@ -33,3 +45,17 @@ chrome.storage.onChanged.addListener(changes=>{if(changes.uiTheme)document.docum
 window.addEventListener('keydown',event=>{
   if(event.altKey && event.code==='KeyL' && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.repeat){event.preventDefault();act({type:'MN_TOGGLE_LIBRARY',tabId:7});}
 });
+
+// These fixtures exercise the six adapter contracts; they are not live-site proof.
+const fixtureClasses={youtube:['html5-video-player','ytp-right-controls'],bilibili:['bpx-player-container','bpx-player-control-bottom-right'],iqiyi:['iqp-player','iqp-player-control-right'],youku:['yk-player','kui-control-right'],mgtv:['mgtv-player','mgtv-player-control-right'],tencent:['txp_player','txp_right_controls'],fallback:['unrecognized-player','unrecognized-controls']};
+const scenePlayer=document.querySelector('.scene-video');
+document.querySelector('#scene-site').addEventListener('change',event=>{
+  const site=event.target.value;document.documentElement.dataset.previewSite=site;
+  scenePlayer.className='scene-video '+fixtureClasses[site][0];
+  document.querySelector('.scene-player-actions').className='scene-player-actions '+fixtureClasses[site][1];
+  // A player's controls are often replaced after a route or fullscreen change.
+  const actions=document.querySelector('.scene-player-actions');actions.replaceChildren(...[...actions.children].filter(child=>!child.classList.contains('mn-player-entry') && child.dataset.asideSurface!=='player-entry'));
+});
+document.querySelector('#scene-play').addEventListener('click',()=>video.paused ? video.play() : video.pause());
+for(const ev of ['play','pause'])video.addEventListener(ev,()=>{document.querySelector('#scene-play').textContent=video.paused?'▶':'Ⅱ';document.querySelector('#scene-play').setAttribute('aria-label',video.paused?'播放示例视频':'暂停示例视频');});
+document.querySelector('#scene-fullscreen').addEventListener('click',()=>document.fullscreenElement ? document.exitFullscreen() : scenePlayer.requestFullscreen());

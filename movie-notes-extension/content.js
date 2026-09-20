@@ -1,6 +1,7 @@
 (() => {
-if (globalThis.__asideContentLoaded === '1.9.1') return;
-globalThis.__asideContentLoaded = '1.9.1';
+if (globalThis.__asideContentLoaded === '1.9.5') return;
+globalThis.__asideContentLoaded = '1.9.5';
+const playerDock = globalThis.__asidePlayerDock;
 const nativeShortcuts = Boolean(chrome.runtime.getManifest?.().commands?.['quick-note']);
 function formatSeconds(sec) {
   if (typeof sec !== "number" || Number.isNaN(sec)) return null;
@@ -125,7 +126,7 @@ function hookVideoLifecycle() {
   video.dataset.mnHooked = "1";
   const onChange = () => {
     postMediaState();
-    updateBallPausedState();
+    updatePlayerEntryState();
   };
   ["play", "pause", "seeked"].forEach((ev) => video.addEventListener(ev, onChange));
 }
@@ -139,28 +140,26 @@ function getMountTarget() {
   );
 }
 
-function handleFullscreenForBall() {
+function handleFullscreenForEntry() {
   postMediaState();
   const target = getMountTarget();
   if (libraryHost && libraryHost.parentElement !== target) target.appendChild(libraryHost);
-  if (ui?.ball && ui.ball.parentElement !== target) {
-    target.appendChild(ui.ball);
+  ensurePlayerEntry();
+  if (ui?.quickHost && ui.quickHost.parentElement !== target) {
+    target.appendChild(ui.quickHost);
   }
-  if (ui?.qn && ui.qn.parentElement !== target) {
-    target.appendChild(ui.qn);
-  }
+  queuePlayerLayout();
 }
 
-document.addEventListener("fullscreenchange", handleFullscreenForBall);
-document.addEventListener("webkitfullscreenchange", handleFullscreenForBall);
+document.addEventListener("fullscreenchange", handleFullscreenForEntry);
+document.addEventListener("webkitfullscreenchange", handleFullscreenForEntry);
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message.type !== "string") return;
 
   if (message.type === 'MN_KEYBOARD_COMMAND') {
     if (message.command === 'quick-note') {
-      if (ui?.qn) { if (!ui.composing) ui.qn.querySelector('textarea')?.focus(); }
-      else void openQuickNote('command');
+      void toggleQuickNote('command');
     }
     sendResponse({success:true}); return;
   }
@@ -305,11 +304,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 postMediaState();
 
 /* =========================
- * v1.3 悬浮球 + 快捷输入框
+ * 播放器底栏入口 + 底部快速记录
  * ========================= */
 
-const FLOATING_POS_KEY = "floatingBallPosition";
-const QUICK_BOX_WIDTH = 360;
+const QUICK_BOX_WIDTH = 420;
 
 const QUICK_PLACEHOLDERS = [
   "这一幕让你想到什么？",
@@ -366,27 +364,11 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-async function readFloatingPos() {
-  try {
-    const data = await chrome.storage.local.get(FLOATING_POS_KEY);
-    const p = data?.[FLOATING_POS_KEY];
-    if (!p || typeof p !== "object") return { side: "right", y: 320 };
-    const side = p.side === "left" ? "left" : "right";
-    const y = Number.isFinite(Number(p.y)) ? Number(p.y) : 320;
-    return { side, y };
-  } catch {
-    return { side: "right", y: 320 };
-  }
-}
-
-async function writeFloatingPos(pos) {
-  try {
-    await chrome.storage.local.set({
-      [FLOATING_POS_KEY]: { side: pos.side === "left" ? "left" : "right", y: Math.round(Number(pos.y) || 0) }
-    });
-  } catch {
-    // ignore
-  }
+// Dragging only changes the current open window; every new note opens at the video bottom.
+let quickPlacement = null;
+function updateQuickPlacement() {
+  if (!ui?.qn) return;
+  quickPlacement=playerDock.relativePosition(ui.qn.getBoundingClientRect(),{width:innerWidth,height:innerHeight});
 }
 
 let libraryHost = null;
@@ -400,7 +382,7 @@ function applySurfaceTheme(value) {
   surfaceTheme = value === 'light' ? 'light' : 'dark';
   if (libraryHost) libraryHost.dataset.theme = surfaceTheme;
   if (ui?.qn) ui.qn.dataset.theme = surfaceTheme;
-  if (ui?.ball) ui.ball.dataset.theme = surfaceTheme;
+  if (ui?.trigger) ui.trigger.dataset.theme = surfaceTheme;
 }
 
 function restorePageFocus(preferred) {
@@ -418,7 +400,7 @@ function hideLibrary() {
   const wasOpen = libraryOpen;
   libraryOpen = false;
   libraryHost?.style.setProperty('display', 'none', 'important');
-  if (ui?.ball) ui.ball.style.display = '';
+  updatePlayerEntryState();
   if (wasOpen) restorePageFocus(libraryReturnFocus);
 }
 async function showLibrary(tabId, home = false) {
@@ -444,15 +426,16 @@ async function showLibrary(tabId, home = false) {
           box-shadow:0 20px 64px #17111f38,0 2px 12px #17111f24,inset 0 1px 0 #ffffff29!important;
           overflow:hidden!important;color-scheme:dark;}
         :host([data-theme="light"]){background:rgba(248,245,252,.68)!important;border-color:#ffffffa6!important;color-scheme:light;box-shadow:0 20px 64px #17111f26,0 2px 12px #17111f1a,inset 0 1px 0 #ffffffa6!important;}
-        .grip{height:24px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;
+        .grip{position:absolute;top:0;left:0;right:0;z-index:1;height:18px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;
           cursor:grab;touch-action:none;background:transparent;color:#c6bdd0;
           font:12px MiSans,-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;user-select:none;}
         .grip:active{cursor:grabbing}.grip:focus-visible{outline:2px solid transparent;border-radius:16px;box-shadow:inset 0 0 0 2px #ddd0ef,inset 0 0 0 5px #ddd0ef22}
-        .grip span{width:32px;height:3px;border-radius:4px;background:#c6bdd066;}
+        .grip span{width:32px;height:3px;border-radius:4px;background:#c6bdd066;opacity:0;transition:opacity 150ms ease;}
+        .grip:hover span,.grip:focus-visible span,.grip:active span{opacity:1;}
         .grip:hover span{background:#ddd0ef;}
         :host([data-theme="light"]) .grip{color:#655c73;}
         :host([data-theme="light"]) .grip span{background:#655c7366;}
-        iframe{display:block;width:100%;height:calc(100% - 24px);border:0;background:transparent;}
+        iframe{display:block;width:100%;height:100%;border:0;background:transparent;}
         .resize{position:absolute;touch-action:none;z-index:2;user-select:none;}
         .resize[data-edge="left"]{left:0;top:24px;bottom:24px;width:6px;cursor:ew-resize;}
         .resize[data-edge="right"]{right:0;top:24px;bottom:24px;width:6px;cursor:ew-resize;}
@@ -460,12 +443,13 @@ async function showLibrary(tabId, home = false) {
         .resize[data-edge^="bottom-"]{bottom:0;width:24px;height:24px;color:#c6bdd0;}
         .resize[data-edge="bottom-left"]{left:0;cursor:nesw-resize;}
         .resize[data-edge="bottom-right"]{right:0;cursor:nwse-resize;}
-        .resize[data-edge^="bottom-"]::after{content:"";position:absolute;inset:8px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;border-radius:0 0 5px 0;opacity:.6;}
+        .resize[data-edge^="bottom-"]::after{content:"";position:absolute;inset:8px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;border-radius:0 0 5px 0;opacity:0;transition:opacity 150ms ease;}
         .resize[data-edge="bottom-left"]::after{transform:rotate(90deg);}
-        .resize:hover::after{opacity:1;}
+        .resize:is(:hover,:focus-visible,:active)::after{opacity:1;}
         .resize:focus-visible{outline:2px solid transparent;border-radius:10px;box-shadow:inset 0 0 0 2px #ddd0ef;}
         :host([data-theme="light"]) .resize{color:#655c73;}
         :host([data-theme="light"]) :is(.grip,.resize):focus-visible{box-shadow:inset 0 0 0 2px #665278;}
+        @media(prefers-reduced-motion:reduce){.grip span,.resize::after{transition:none;}}
         @supports not (backdrop-filter:blur(1px)) {
           :host{background:#393244!important;}
           :host([data-theme="light"]){background:#f0ecf5!important;}
@@ -557,50 +541,34 @@ async function showLibrary(tabId, home = false) {
     libraryHost.style.setProperty('top', `${clamp(bounds.top,8,Math.max(8,innerHeight-bounds.height-8))}px`, 'important');
     libraryHost.style.setProperty('right', 'auto', 'important');
     libraryOpen = true;
-    if (ui?.ball) ui.ball.style.display = 'none';
+    updatePlayerEntryState();
     const frame = libraryHost.shadowRoot.querySelector('iframe');
     frame.focus();
     if (home) frame.contentWindow.postMessage({ type: 'MN_NAVIGATE_HOME' }, chrome.runtime.getURL('').replace(/\/$/, ''));
   } finally { libraryBusy = false; }
 }
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && libraryOpen && !e.isComposing) { e.preventDefault(); hideLibrary(); }
-}, true);
+
 
 let ui = null;
 let pendingMeta = null; // { title, timeSec, formatted, thumbnail, url }
 let wasPlayingBefore = false;
 
+let floatingStyles = null;
 function ensureStyles() {
-  if (document.getElementById("mn-float-style")) return;
-  const style = document.createElement("style");
-  style.id = "mn-float-style";
-  style.textContent = `
-  .mn-float-btn{
-    box-sizing:border-box;position:fixed;width:44px;height:44px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;background:rgba(64,56,77,.9);
-    border:1px solid rgba(221,208,239,.32);color:#f6f3f8;font-size:24px;
-    cursor:pointer;user-select:none;opacity:.94;z-index:2147483647;
-    box-shadow:0 6px 20px #19132126;backdrop-filter:blur(16px);
-    transition:opacity 140ms ease,transform 140ms ease,background 140ms ease;
+  if (floatingStyles) return floatingStyles;
+  floatingStyles = `
+  .mn-player-entry{
+    all:initial;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    position:relative;flex:0 0 36px;width:36px;height:var(--mn-entry-height,32px);vertical-align:middle;margin:0 4px;
+    border:0;border-radius:5px;background:transparent;color:#fff;cursor:pointer;line-height:1;opacity:.85;
   }
-  .mn-float-btn svg{display:block;width:24px;height:28px;pointer-events:none;}
-  .mn-float-btn:hover{opacity:1;transform:translateY(-1px);background:#4d445d;}
-  .mn-float-btn:focus-visible{outline:2px solid #ddd0ef;outline-offset:3px;}
-  .mn-float-btn[data-theme="light"]{background:rgba(245,242,248,.92);border-color:#9a8da966;color:#665278;}
-  .mn-float-btn[data-theme="light"]:hover{background:#e8e1ef;}
-  .mn-float-btn[data-theme="light"].mn-open{background:#665278;color:#fff;}
-  .mn-float-btn.mn-error{background:#794e59!important;animation:mnShake 300ms ease;}
-  @keyframes mnShake{
-    0%{transform:translateX(0);}20%{transform:translateX(-5px);}
-    40%{transform:translateX(5px);}60%{transform:translateX(-4px);}
-    80%{transform:translateX(4px);}100%{transform:translateX(0);}
-  }
-  .mn-float-btn.mn-open{background:#ddd0ef;color:#302a3b;}
-  .mn-float-btn.mn-paused::before{
-    content:"";position:absolute;inset:-5px;border:1px solid #ddd0ef55;border-radius:50%;
-    pointer-events:none;
-  }
+  .mn-player-entry svg{display:block!important;width:19px!important;height:19px!important;pointer-events:none;}
+  .mn-player-entry:hover,.mn-player-entry[aria-expanded="true"]{opacity:1;background:#ffffff18;}
+  .mn-player-entry:focus-visible{outline:2px solid #ddd0ef;outline-offset:-2px;opacity:1;}
+  .mn-player-entry[data-dock="fallback"]{position:fixed;z-index:2147483646;color:#fff;background:#24202bc9;backdrop-filter:blur(8px);margin:0;width:36px;height:32px;opacity:0;pointer-events:none;transition:opacity 160ms ease;}
+  .mn-player-entry[data-dock="fallback"][data-visible="true"],.mn-player-entry[data-dock="fallback"]:focus-visible{opacity:1;pointer-events:auto;}
+  .mn-player-entry[hidden]{display:none!important;}
+  @keyframes mnNoteEnter{from{opacity:0;translate:0 12px;}to{opacity:1;translate:0 0;}}
   .mn-qn{
     --mn-glass:rgba(27,22,39,.68);--mn-solid:#393244;--mn-input:rgba(24,19,35,.20);
     --mn-text:#faf8fd;--mn-meta:#e4ddea;--mn-accent:#ddd0ef;--mn-on-accent:#302a3b;
@@ -613,7 +581,7 @@ function ensureStyles() {
     box-shadow:0 16px 48px #17111f33,0 2px 8px #17111f24,inset 0 1px 0 #ffffff29;
     backdrop-filter:blur(32px) saturate(1.25);-webkit-backdrop-filter:blur(32px) saturate(1.25);
     font-family:MiSans,-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;
-    font-size:14px;line-height:1.5;color-scheme:dark;scrollbar-color:#887b9a transparent;
+    animation:mnNoteEnter 160ms ease-out;font-size:14px;line-height:1.5;color-scheme:dark;scrollbar-color:#887b9a transparent;
   }
   .mn-qn[data-theme="light"]{
     --mn-glass:rgba(248,245,252,.68);--mn-solid:#f0ecf5;--mn-input:rgba(255,255,255,.30);
@@ -631,18 +599,28 @@ function ensureStyles() {
   .mn-qn__ctx{display:flex;min-width:0;flex:1;align-items:center;gap:8px;}
   .mn-qn__top-accent{
     min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-    color:var(--mn-text);font-size:16px;line-height:1.5;font-weight:500;
+    color:var(--mn-text);font-size:14px;line-height:1.5;font-weight:500;
   }
   .mn-qn__time{flex-shrink:0;color:var(--mn-accent);font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap;}
   .mn-qn__library{
     display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;
-    flex-shrink:0;background:transparent;border:0;border-radius:8px;cursor:pointer;padding:2px;
+    position:relative;flex-shrink:0;background:transparent;border:0;border-radius:8px;color:var(--mn-meta);cursor:pointer;padding:2px;
   }
   .mn-qn__library:hover{background:var(--mn-subtle);}
-  .mn-qn__library img{display:block;width:28px;height:28px;object-fit:contain;border-radius:5px;}
-  .mn-qn__mid{padding:16px;}
+  .mn-qn__library svg{display:block;width:18px;height:18px;}
+  .mn-qn__library::after{content:attr(aria-label);position:absolute;z-index:3;right:0;top:calc(100% + 6px);width:max-content;max-width:220px;
+    padding:6px 10px;border:1px solid var(--mn-line);border-radius:8px;background:var(--mn-solid);color:var(--mn-text);
+    font:400 12px/1.5 MiSans,-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;box-shadow:0 4px 12px #17111f20;pointer-events:none;opacity:0;transition:opacity 120ms ease;}
+  .mn-qn__library:is(:hover,:focus-visible)::after{opacity:1;}
+  .mn-qn__mid{padding:12px 16px;}
+  .mn-qn__tools{display:flex;flex:none;align-items:center;gap:2px;}
+  .mn-qn__tools button{display:inline-flex;align-items:center;justify-content:center;position:relative;flex:none;width:28px;height:28px;padding:0;border:0;border-radius:6px;color:var(--mn-meta);background:transparent;cursor:pointer;}
+  .mn-qn__tools button:hover{color:var(--mn-accent);background:var(--mn-subtle);}
+  .mn-qn__tools svg{display:block;flex:none;width:16px;height:16px;pointer-events:none;}
+  .mn-qn__drag-hint{font-size:11px;line-height:1.5;color:var(--mn-meta);opacity:.8;padding:0 16px 8px;}
+
   .mn-qn__ta{
-    width:100%;min-height:144px;max-height:400px;resize:none;display:block;
+    width:100%;min-height:88px;max-height:400px;resize:none;display:block;
     padding:12px;border:1px solid var(--mn-line);border-radius:10px;outline:none;
     background:var(--mn-input);color:var(--mn-text);caret-color:var(--mn-accent);
     font:400 16px/1.8 MiSans,-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;
@@ -693,29 +671,41 @@ function ensureStyles() {
     .mn-qn__sub-btn{justify-self:start;justify-items:start;}
     .mn-qn__save-link{justify-self:end;}
   }
-  .mn-float-btn:focus-visible,.mn-qn button:focus-visible{
+  .mn-qn button:focus-visible{
     outline:2px solid transparent;outline-offset:3px;border-radius:12px;
     box-shadow:0 0 0 2px #302a3b,0 0 0 4px #ddd0ef,0 0 0 7px #ddd0ef22;
   }
-  .mn-float-btn:focus-visible{border-radius:50%;}
-  .mn-qn[data-theme="light"] button:focus-visible,.mn-float-btn[data-theme="light"]:focus-visible{
+  .mn-qn[data-theme="light"] button:focus-visible{
     box-shadow:0 0 0 2px #f5f2f8,0 0 0 4px #665278,0 0 0 7px #66527822;
   }
-  @media(forced-colors:active){.mn-float-btn:focus-visible,.mn-qn button:focus-visible{outline:2px solid Highlight;}}
+  @media(forced-colors:active){.mn-qn button:focus-visible{outline:2px solid Highlight;}}
   @media(prefers-reduced-motion:reduce){
-    .mn-float-btn,.mn-float-btn::before,.mn-qn__ta{animation:none!important;transition:none!important;}
+    .mn-player-entry,.mn-qn,.mn-qn__ta,.mn-qn__library::after{animation:none!important;transition:none!important;}
   }
   `;
-  (document.head || document.documentElement).appendChild(style);
+  return floatingStyles;
+}
+
+// Website button/SVG resets must never reach the editor or the player entry.
+// Keep the roots open for accessibility, inspection and annotation tools.
+function createFloatingSurface(kind, element) {
+  const host = document.createElement('aside-surface');
+  host.dataset.asideSurface = kind;
+  host.style.setProperty('all', 'initial', 'important');
+  host.style.setProperty('display', 'contents', 'important');
+  host.style.setProperty('direction', 'ltr', 'important');
+  const root = host.attachShadow({mode:'open'});
+  const style = document.createElement('style');
+  style.textContent = ensureStyles();
+  root.append(style, element);
+  return host;
 }
 
 // The same gently irregular silhouette and two-tone ink as the native Aside cursor.
-function setFloatingIcon(ball, open) {
-  ball.innerHTML = open
-    ? '<svg viewBox="0 0 24 28" aria-hidden="true" focusable="false"><path d="M6 8Q12 13 18 20M18 8Q12 15 6 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
-    : '<svg viewBox="0 0 24 28" aria-hidden="true" focusable="false"><path d="M3 2L19 15L12 16L8 23Z" fill="#e3d8ef" stroke="#554362" stroke-width="1.3" stroke-linejoin="round"/><path d="M4 4L11 15" fill="none" stroke="#897299" stroke-width="1" stroke-linecap="round"/></svg>';
-  ball.title = open ? '收起，保留草稿 · Esc' : '旁白 Aside · Alt+N 唤起 · 可拖拽';
-  ball.setAttribute('aria-expanded', String(open));
+function setPlayerEntryIcon(button, open) {
+  button.setAttribute('aria-expanded', String(open));
+  button.setAttribute('aria-label',open ? '收起旁白记录' : '旁白 · 记录此刻');
+  button.innerHTML='<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4.5h12M4 9h7M4 13.5h4M12 16l4.5-4.5-2-2L10 14v2h2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
 const quickMessageTimers = new WeakMap();
@@ -734,126 +724,74 @@ function showQuickMessage(qn, text, kind) {
   }, 3000));
 }
 
-async function ensureFloatingBall() {
-  if (!getVideoElement() || (ui?.ball && document.contains(ui.ball))) return;
+let fallbackAwakeUntil = 0;
+let fallbackSleepTimer = null;
+let layoutFrame = null;
+function ensurePlayerEntry() {
+  const video=getVideoElement();
+  if (!video) { if(ui?.trigger)ui.trigger.hidden=true; return; }
   ensureStyles();
-  const pos = await readFloatingPos();
-
-  const ball = document.createElement("div");
-  ball.className = "mn-float-btn";
-  ball.dataset.theme = surfaceTheme;
-  ball.title = "旁白 Aside · Alt+N 唤起 · 可拖拽";
-  ball.tabIndex = 0; ball.setAttribute("role", "button"); ball.setAttribute("aria-label", "打开或收起快速记录");
-  ball.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " ") { e.preventDefault(); ball.click(); } });
-  setFloatingIcon(ball, false);
-  if (libraryOpen) ball.style.display = "none";
-
-  const y = clamp(pos.y, 16, window.innerHeight - 44 - 16);
-  if (pos.side === "left") {
-    ball.style.left = "16px";
-    ball.style.right = "auto";
-  } else {
-    ball.style.right = "16px";
-    ball.style.left = "auto";
+  ui=ui || {};
+  if (!ui.trigger) {
+    const button=document.createElement('button');
+    button.type='button';button.className='mn-player-entry';button.dataset.theme=surfaceTheme;
+    const alt=/Mac|iPhone|iPad/i.test(navigator.platform) ? 'Option' : 'Alt';
+    button.title=`旁白 · 记录此刻（${alt}+N 打开 / 收起）`;
+    button.setAttribute('aria-keyshortcuts','Alt+N');
+    setPlayerEntryIcon(button,false);
+    button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();void toggleQuickNote('player');});
+    ui.trigger=button;
+    ui.entryHost=createFloatingSurface('player-entry',button);
   }
-  ball.style.top = `${y}px`;
-
-  let dragging = false;
-  let startX = 0;
-  let startY = 0;
-  let originLeft = 0;
-  let originTop = 0;
-
-  const onDown = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    const rect = ball.getBoundingClientRect();
-    originLeft = rect.left;
-    originTop = rect.top;
-    ball.style.transition = "none";
-    window.addEventListener("mousemove", onMove, true);
-    window.addEventListener("mouseup", onUp, true);
-  };
-  const onMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    const nx = originLeft + dx;
-    const ny = clamp(originTop + dy, 16, window.innerHeight - 44 - 16);
-    ball.style.left = `${clamp(nx, 16, window.innerWidth - 44 - 16)}px`;
-    ball.style.right = "auto";
-    ball.style.top = `${ny}px`;
-  };
-  const onUp = async () => {
-    if (!dragging) return;
-    dragging = false;
-    window.removeEventListener("mousemove", onMove, true);
-    window.removeEventListener("mouseup", onUp, true);
-    ball.style.transition = "";
-
-    const rect = ball.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const side = centerX < window.innerWidth / 2 ? "left" : "right";
-    const top = clamp(rect.top, 16, window.innerHeight - 44 - 16);
-    if (side === "left") {
-      ball.style.left = "16px";
-      ball.style.right = "auto";
-    } else {
-      ball.style.right = "16px";
-      ball.style.left = "auto";
-    }
-    ball.style.top = `${top}px`;
-    await writeFloatingPos({ side, y: top });
-    repositionQuickBox();
-  };
-
-  ball.addEventListener("mousedown", onDown, true);
-  ball.addEventListener("click", (e) => {
-    if (dragging) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (ui?.qn) closeQuickNote("ball");
-    else openQuickNote("click");
-  });
-
-  getMountTarget().appendChild(ball);
-
-  ui = ui || {};
-  ui.ball = ball;
-  ui.side = pos.side;
-
-  updateBallPausedState();
+  const controls=playerDock.findControls(video,detectSite());
+  const native=controls && (!document.fullscreenElement || document.fullscreenElement.contains(controls));
+  const parent=native ? controls : getMountTarget();
+  if (ui.entryHost.parentElement!==parent) parent.prepend(ui.entryHost);
+  ui.trigger.dataset.dock=native ? 'native' : 'fallback';
+  if(native){ui.trigger.style.removeProperty('left');ui.trigger.style.removeProperty('top');ui.trigger.style.setProperty('--mn-entry-height',`${clamp(controls.getBoundingClientRect().height || 32,28,48)}px`);}
+  updatePlayerEntryState();
 }
-
-function updateBallPausedState() {
-  const video = getVideoElement();
-  const paused = video ? Boolean(video.paused) : false;
-  if (!ui?.ball) return;
-  ui.ball.classList.toggle("mn-paused", paused && !ui.qn);
+function updatePlayerEntryState() {
+  if(!ui?.trigger)return;
+  const video=getVideoElement();
+  const r=video?.getBoundingClientRect();
+  ui.trigger.hidden=libraryOpen || !r || r.bottom<=0 || r.top>=innerHeight;
+  if(ui.trigger.dataset.dock==='fallback' && r) {
+    ui.trigger.style.left=`${clamp(r.left+r.width*.62-18,16,innerWidth-52)}px`;
+    ui.trigger.style.top=`${clamp(r.bottom-42,16,innerHeight-48)}px`;
+    ui.trigger.dataset.visible=String(Date.now()<fallbackAwakeUntil || Boolean(ui.qn) || video.paused);
+  }
 }
-
+function wakePlayerEntry(event) {
+  const r=getVideoElement()?.getBoundingClientRect();
+  if(!r || event.clientX<r.left || event.clientX>r.right || event.clientY<r.top || event.clientY>r.bottom)return;
+  fallbackAwakeUntil=Date.now()+2200;
+  updatePlayerEntryState();
+  clearTimeout(fallbackSleepTimer);
+  fallbackSleepTimer=setTimeout(updatePlayerEntryState,2250);
+}
+function queuePlayerLayout() {
+  if(layoutFrame!=null)return;
+  layoutFrame=requestAnimationFrame(()=>{layoutFrame=null;updatePlayerEntryState();repositionQuickBox();});
+}
 function repositionQuickBox() {
-  if (!ui?.qn || !ui?.ball) return;
-  const b = ui.ball.getBoundingClientRect();
-  const q = ui.qn;
-  q.style.maxHeight = `${Math.max(0,window.innerHeight-32)}px`;
-  const preferLeft = b.left > window.innerWidth / 2;
-  const top = clamp(b.top - 10, 16, window.innerHeight - q.offsetHeight - 16);
-  const boxWidth = q.getBoundingClientRect().width || QUICK_BOX_WIDTH;
-  if (preferLeft) {
-    // ball on right → box opens left → handle on bottom-left
-    q.style.left = `${clamp(b.left - 12 - boxWidth, 16, window.innerWidth - boxWidth - 16)}px`;
-    q.dataset.rsDir = "left";
-  } else {
-    // ball on left → box opens right → handle on bottom-right
-    q.style.left = `${clamp(b.right + 12, 16, window.innerWidth - boxWidth - 16)}px`;
-    q.dataset.rsDir = "right";
+  if(!ui?.qn || ui.dragging || ui.resizing)return;
+  const q=ui.qn;
+  q.style.maxHeight=`${Math.max(80,innerHeight-32)}px`;
+  const video=getVideoElement()?.getBoundingClientRect();
+  const subtitles=[];
+  if(video) for(const node of document.querySelectorAll('.ytp-caption-segment,.bpx-player-subtitle-panel-area,.bilibili-player-video-subtitle,.iqp-subtitle,.sub-text,.txp_subtitle_txt,.subtitle_player_normal,.subtitle-container,[class*="subtitle"],[class*="caption"]')) {
+    if(!node.textContent?.trim())continue;
+    const r=node.getBoundingClientRect();
+    const style=getComputedStyle(node);
+    if(r.width>0 && r.height>0 && r.height<(video.bottom-video.top)*.5 && r.bottom>video.top && r.top<video.bottom && r.right>video.left && r.left<video.right && style.visibility!=='hidden' && style.display!=='none' && Number(style.opacity)>0)subtitles.push(r);
   }
-  q.style.top = `${top}px`;
+  const pos=playerDock.placement(video,{width:innerWidth,height:innerHeight},q.getBoundingClientRect(),quickPlacement,{anchor:ui.trigger?.getBoundingClientRect(),subtitles});
+  q.style.left=`${pos.left}px`;q.style.top=`${pos.top}px`;q.dataset.rsDir='right';
 }
+window.addEventListener('pointermove',wakePlayerEntry,{passive:true});
+window.addEventListener('scroll',queuePlayerLayout,{passive:true,capture:true});
+window.addEventListener('resize',queuePlayerLayout,{passive:true});
 
 /** 缩小后再 JPEG，控制体积，便于经扩展存储/消息可靠传递 */
 async function captureCurrentFrame(video) {
@@ -1008,6 +946,21 @@ function mapSaveError(err) {
   return { text: `保存失败：${short}`, code: "GENERIC" };
 }
 
+let quickToggleDesired = null;
+let quickToggleTask = null;
+function toggleQuickNote(from) {
+  if(ui?.composing || ui?.qn?.dataset.saving==='1')return;
+  quickToggleDesired=!(quickToggleDesired ?? Boolean(ui?.qn || quickOpening));
+  if(quickToggleTask)return quickToggleTask;
+  quickToggleTask=(async()=>{
+    while(quickToggleDesired!==null){
+      const want=quickToggleDesired;quickToggleDesired=null;
+      if(want && !ui?.qn)await openQuickNote(from);
+      else if(!want && ui?.qn)await closeQuickNote('toggle');
+    }
+  })().finally(()=>{quickToggleTask=null;});
+  return quickToggleTask;
+}
 let quickOpening = false;
 async function openQuickNote(from) {
   if (quickOpening || ui?.qn) return;
@@ -1019,10 +972,9 @@ async function openQuickNote(from) {
 async function openQuickNoteImpl(_from) {
   if (detectSite() === "unknown" || !getVideoElement()) return;
   hideLibrary();
-  await ensureFloatingBall();
-  if (!ui?.ball || ui?.qn) return;
-
-  /* 已打开时不再用 Alt+N 关闭；关闭请用 Esc 或点小球 */
+  ensurePlayerEntry();
+  quickPlacement = null;
+  if (!ui?.trigger || ui?.qn) return;
 
   const video = getVideoElement();
   let timeSec = null, formatted = null, thumbnail = null;
@@ -1058,7 +1010,7 @@ async function openQuickNoteImpl(_from) {
   qn.setAttribute('aria-label', '快速记录');
   qn.style.position = "fixed";
   qn.innerHTML = `
-    <div class="mn-qn__top"> <span class="mn-qn__ctx"></span> <button type="button" class="mn-qn__library" aria-label="返回旁白首页"><img src="${chrome.runtime.getURL('icons/icon32.png')}" alt="" width="28" height="28" draggable="false"></button></div>
+    <div class="mn-qn__top"> <span class="mn-qn__ctx"></span> <div class="mn-qn__tools"><button type="button" class="mn-qn__library" aria-label="返回旁白首页"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="mn-qn__close" aria-label="收起快速记录" title="收起 · ${altLabel}+N"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div></div>
     <div class="mn-qn__mid">
       <textarea class="mn-qn__ta mn-qn__ta--serif" aria-label="记录内容" placeholder=""></textarea>
     </div>
@@ -1070,6 +1022,7 @@ async function openQuickNoteImpl(_from) {
     <div class="mn-qn__msg" role="status" aria-live="polite" hidden></div>
     <div class="mn-qn__resize-handle" title="拖拽调整大小"></div>
   `;
+  qn.querySelector('.mn-qn__close').addEventListener('click',()=>void closeQuickNote('close'));
   qn.querySelector('.mn-qn__library').addEventListener('click', async () => {
     // Resolve the sender tab in the background, including when the library was never opened.
     if (libraryTabId != null) await showLibrary(libraryTabId, true);
@@ -1094,6 +1047,7 @@ async function openQuickNoteImpl(_from) {
   const btnSubtitle = qn.querySelector('[data-act="subtitle"]');
   const btnTimestamp = qn.querySelector('[data-act="timestamp"]');
   const topBar = qn.querySelector(".mn-qn__top");
+  topBar.title = "拖动调整位置";
   const resizeHandle = qn.querySelector(".mn-qn__resize-handle");
 
   btnSubtitle?.addEventListener('click', insertCurrentSubtitle);
@@ -1115,7 +1069,7 @@ async function openQuickNoteImpl(_from) {
   let qnDragging = false, qnStartX = 0, qnStartY = 0, qnOriginLeft = 0, qnOriginTop = 0;
   const onTopDown = (e) => {
     if (e.target === resizeHandle || e.target.closest('button')) return;
-    qnDragging = true;
+    qnDragging = true; ui.dragging = true;
     qnStartX = e.clientX; qnStartY = e.clientY;
     const r = qn.getBoundingClientRect();
     qnOriginLeft = r.left; qnOriginTop = r.top;
@@ -1125,13 +1079,15 @@ async function openQuickNoteImpl(_from) {
   };
   const onTopMove = (e) => {
     if (!qnDragging) return;
-    const nx = clamp(qnOriginLeft + e.clientX - qnStartX, 8, window.innerWidth - qn.offsetWidth - 8);
-    const ny = clamp(qnOriginTop  + e.clientY - qnStartY, 8, window.innerHeight - qn.offsetHeight - 8);
+    const nx = clamp(qnOriginLeft + e.clientX - qnStartX, 16, window.innerWidth - qn.offsetWidth - 16);
+    const ny = clamp(qnOriginTop  + e.clientY - qnStartY, 16, window.innerHeight - qn.offsetHeight - 16);
     qn.style.left = `${nx}px`; qn.style.top = `${ny}px`;
     qn.style.right = "auto";
   };
   const onTopUp = () => {
-    qnDragging = false;
+    const moved = qnDragging && (Math.abs(qn.getBoundingClientRect().left-qnOriginLeft)>2 || Math.abs(qn.getBoundingClientRect().top-qnOriginTop)>2);
+    qnDragging = false; ui.dragging = false;
+    if(moved)updateQuickPlacement();
     qn.style.transition = "";
     window.removeEventListener("mousemove", onTopMove, true);
     window.removeEventListener("mouseup", onTopUp, true);
@@ -1143,7 +1099,7 @@ async function openQuickNoteImpl(_from) {
   let rsTop0 = 0;
   resizeHandle.addEventListener("mousedown", (e) => {
     e.preventDefault(); e.stopPropagation();
-    rsActive = true;
+    rsActive = true; ui.resizing = true;
     rsStartX = e.clientX; rsStartY = e.clientY;
     const rect = qn.getBoundingClientRect();
     rsW0 = rect.width; rsH0 = rect.height; rsLeft0 = rect.left; rsTop0 = rect.top;
@@ -1163,37 +1119,32 @@ async function openQuickNoteImpl(_from) {
     qn.style.left = `${fromRight ? rsLeft0 : right-nw}px`;
     qn.style.right = "auto";
     const overhead = qn.offsetHeight-ta.offsetHeight;
-    ta.style.height = `${Math.max(144,nh-overhead)}px`;
+    ta.style.height = `${Math.max(88,nh-overhead)}px`;
     qn.style.maxHeight = `${maxH}px`;
   };
   const onRsUp = () => {
-    rsActive = false;
+    rsActive = false; ui.resizing = false;
+    if(quickPlacement)updateQuickPlacement();else repositionQuickBox();
     window.removeEventListener("mousemove", onRsMove, true);
     window.removeEventListener("mouseup", onRsUp, true);
   };
 
-  // ── Global Esc closes the note regardless of focus ───────────────
-  const onGlobalEsc = (e) => {
-    if (e.key === "Escape" && !e.isComposing && e.keyCode !== 229 && !ui?.composing) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation(); // 阻止 B站等网站的 ESC 退出全屏监听器
-      closeQuickNote("esc");
-    }
-  };
-  document.addEventListener("keydown", onGlobalEsc, true);
-
   // ── Click anywhere outside the box closes it ────────────────────
   const onClickOutside = (e) => {
     if (!ui?.qn) return;
-    if (!ui.qn.contains(e.target) && e.target !== ui.ball) closeQuickNote("outside");
+    const path = e.composedPath();
+    if (!path.includes(ui.qn) && !path.includes(ui.trigger)) closeQuickNote("outside");
   };
   // defer one tick so the opening mousedown doesn't immediately close
-  setTimeout(() => document.addEventListener("mousedown", onClickOutside, true), 0);
+  setTimeout(() => {if(ui?.qn === qn)document.addEventListener("mousedown", onClickOutside, true);}, 0);
 
   // Store cleanup refs so closeQuickNote can remove them
-  ui._escListener = onGlobalEsc;
   ui._outsideListener = onClickOutside;
+  ui.cleanupMotion = () => {
+    window.removeEventListener('mousemove',onTopMove,true);window.removeEventListener('mouseup',onTopUp,true);
+    window.removeEventListener('mousemove',onRsMove,true);window.removeEventListener('mouseup',onRsUp,true);
+    ui.dragging=false;ui.resizing=false;
+  };
 
   const showMsg = (text, kind) => showQuickMessage(qn, text, kind);
 
@@ -1275,10 +1226,10 @@ async function openQuickNoteImpl(_from) {
     } catch (err) {
       console.error("[MovieNotes] quick save error", err);
       showMsg(mapSaveError(err).text, "bad");
-      // 悬浮球红色抖动提示
-      if (ui?.ball) {
-        ui.ball.classList.add("mn-error");
-        setTimeout(() => ui?.ball?.classList.remove("mn-error"), 700);
+      // Keep the error in the editor; unsaved content remains available.
+      if (ui?.trigger) {
+        ui.trigger.classList.add("mn-error");
+        setTimeout(() => ui?.trigger?.classList.remove("mn-error"), 700);
       }
       btnSave.disabled = false;
       ta.disabled = false;
@@ -1294,13 +1245,15 @@ async function openQuickNoteImpl(_from) {
   qn.addEventListener('compositionstart', () => { ui.composing = true; });
   qn.addEventListener('compositionend', () => { ui.composing = false; });
   qn.addEventListener("keydown", async (e) => {
+    if (e.key === "Escape") return;
     e.stopPropagation();
     if (e.isComposing || e.keyCode === 229 || ui?.composing || e.repeat) return;
     if (e.key === 'Tab') {
       const controls = [...qn.querySelectorAll('button:not(:disabled),textarea:not(:disabled)')].filter(n=>n.getClientRects().length);
       const first=controls[0], last=controls.at(-1);
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault();last?.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault();first?.focus(); }
+      const active = qn.getRootNode().activeElement;
+      if (e.shiftKey && active === first) { e.preventDefault();last?.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault();first?.focus(); }
       return;
     }
     if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
@@ -1319,18 +1272,21 @@ async function openQuickNoteImpl(_from) {
     else msg.hidden = true;
   });
 
-  getMountTarget().appendChild(qn);
+  ui.quickHost = createFloatingSurface('quick-note', qn);
+  getMountTarget().appendChild(ui.quickHost);
   ui.qn = qn;
+  ui.sizeObserver = new ResizeObserver(queuePlayerLayout);ui.sizeObserver.observe(qn);
+  if(video)ui.sizeObserver.observe(video);
+  ui.sizeObserver.observe(ui.trigger);
   ui.submitQuick = doSave;
   ui.persistDraft = persistDraft;
   ui.recordingVideo = video;
   ui.recordingWasPlaying = wasPlayingBefore;
-  if (restored.draft) showMsg('已恢复未保存的草稿', 'good');
-  else if (!pendingMeta.thumbnail) showMsg('当前画面无法截图，仍可保存文字与时间点', 'bad');
+  if (!pendingMeta.thumbnail) showMsg('当前画面无法截图，仍可保存文字与时间点', 'bad');
 
-  ui.ball.classList.add("mn-open");
-  setFloatingIcon(ui.ball, true);
-  ui.ball.classList.remove("mn-paused");
+  ui.trigger.classList.add("mn-open");
+  setPlayerEntryIcon(ui.trigger, true);
+  ui.trigger.classList.remove("mn-paused");
 
   repositionQuickBox();
   ta.focus();
@@ -1349,10 +1305,8 @@ async function closeQuickNote(_why) {
     try { if (video) video.play().catch(() => {}); } catch { /* ignore */ }
   }
   // Remove global listeners registered by openQuickNote
-  if (ui?._escListener) {
-    document.removeEventListener("keydown", ui._escListener, true);
-    ui._escListener = null;
-  }
+  ui.cleanupMotion?.();ui.cleanupMotion=null;
+  ui.sizeObserver?.disconnect();ui.sizeObserver=null;
   if (ui?._outsideListener) {
     document.removeEventListener("mousedown", ui._outsideListener, true);
     ui._outsideListener = null;
@@ -1362,14 +1316,16 @@ async function closeQuickNote(_why) {
     quickMessageTimers.delete(ui.qn);
     ui.qn.remove();
     ui.qn = null;
+    ui.quickHost?.remove();
+    ui.quickHost = null;
   }
   if (ui) { ui.submitQuick = null; ui.persistDraft = null; ui.timestampUpdate = null; ui.closing = false; ui.composing = false; }
   pendingMeta = null;
-  if (ui?.ball) {
-    ui.ball.classList.remove("mn-open");
-    setFloatingIcon(ui.ball, false);
+  if (ui?.trigger) {
+    ui.trigger.classList.remove("mn-open");
+    setPlayerEntryIcon(ui.trigger, false);
   }
-  updateBallPausedState();
+  updatePlayerEntryState();
   if (_why !== 'library' && _why !== 'outside') restorePageFocus(ui?.recordingVideo);
 }
 
@@ -1431,7 +1387,7 @@ function insertCurrentSubtitle() {
   }
 }
 
-/** Alt+N：未打开时弹出输入框；已打开时只聚焦，不提交。 */
+/** Alt/Option+N toggles the draft; Escape remains owned by the video player. */
 function onGlobalAltN(e) {
   if (nativeShortcuts) return;
   if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing || detectSite() === "unknown" || !getVideoElement()) return;
@@ -1441,11 +1397,7 @@ function onGlobalAltN(e) {
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
-  if (ui?.qn) {
-    ui.qn.querySelector('textarea')?.focus();
-    return;
-  }
-  void openQuickNote("hotkey");
+  void toggleQuickNote("hotkey");
 }
 
 // 在 window capture 阶段最早接管 Alt+N，覆盖站点（如 YouTube/B 站）已绑定的同键
@@ -1472,8 +1424,9 @@ if (detectSite() !== "unknown") {
       domCheckTid = null;
       if (document.visibilityState === "hidden") return;
       try { hookVideoLifecycle(); } catch { /* ignore */ }
-      try { ensureFloatingBall(); } catch { /* ignore */ }
-      updateBallPausedState();
+      try { ensurePlayerEntry(); } catch { /* ignore */ }
+      updatePlayerEntryState();
+      if(ui?.qn)queuePlayerLayout();
     }, 400);
   };
 
@@ -1483,7 +1436,7 @@ if (detectSite() !== "unknown") {
   // SPA 重渲染 / 视频元素延迟插入：观察 DOM 变化
   try {
     const mo = new MutationObserver(scheduleDomCheck);
-    mo.observe(document.documentElement, { childList: true, subtree: true });
+    mo.observe(document.documentElement, { childList: true, characterData:true, subtree: true });
   } catch {
     // ignore — very old browser fallback
   }
@@ -1494,12 +1447,5 @@ if (detectSite() !== "unknown") {
   });
 }
 
-window.addEventListener("resize", () => {
-  if (!ui?.ball) return;
-  const rect = ui.ball.getBoundingClientRect();
-  const top = clamp(rect.top, 16, window.innerHeight - 44 - 16);
-  ui.ball.style.top = `${top}px`;
-  repositionQuickBox();
-});
 
 })();

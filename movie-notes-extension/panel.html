@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="cursor.css" />
   </head>
   <body>
-    <div class="window-actions"><button id="btnOpenFull" type="button" title="在新标签页整理记录" aria-label="在新标签页整理记录" hidden>↗</button><button id="btnCloseLibrary" type="button" title="收起记录库" aria-label="收起记录库" hidden><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
     <dialog class="help-dialog" id="onboardBanner" hidden aria-labelledby="helpTitle">
       <div class="help-head"><span class="eyebrow">旁白 · 使用帮助</span><button id="btnCloseHelp" type="button" class="icon-btn" aria-label="关闭使用帮助"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
       <div class="help-scroll" tabindex="0" aria-label="帮助内容，向下滚动查看快捷键"><section class="help-tutorial">
@@ -20,17 +19,17 @@
       <p class="help-lead">留下此刻的想法，也记住它发生的地方。</p>
       <ol class="help-steps">
         <li><span>01</span><div><strong>播放一个视频</strong><p>打开想看的电影、访谈或视频播客。</p><p>支持 YouTube、B 站、爱奇艺、优酷、芒果 TV 和腾讯视频。</p></div></li>
-        <li><span>02</span><div><strong>留下这一刻</strong><p>点击 <kbd data-command="quick-note">Alt + N</kbd> 或点击悬浮球，打开快速记录，自动记录当前时间点并截取画面，你可以接着写下此刻的想法。</p></div></li>
+        <li><span>02</span><div><strong>留下这一刻</strong><p>点击 <kbd data-command="quick-note">Alt + N</kbd> 或点击播放器底栏的旁白按钮，打开快速记录，自动记录当前时间点并截取画面，你可以接着写下此刻的想法。</p></div></li>
         <li><span>03</span><div><strong>保存，随时回看</strong><p>保存笔记，随时可以在「旁白」中找到你的记录，并快速回到当时视频片段。</p></div></li>
       </ol>
       </section>
       <section class="help-shortcuts" aria-labelledby="shortcutTitle"><div class="help-scroll-cue" aria-hidden="true">继续向下 · 让记录更顺手 ↓</div><h3 id="shortcutTitle">顺手的快捷键</h3><dl>
         <dt data-command="_execute_action">Alt + L</dt><dd>打开 / 收起记录库</dd>
-        <dt data-command="quick-note">Alt + N</dt><dd>打开或聚焦快速记录</dd>
+        <dt data-command="quick-note">Alt + N</dt><dd>打开 / 收起快速记录</dd>
         <dt data-local-shortcut="subtitle">Alt + S</dt><dd>编辑记录时，在光标处插入当前字幕</dd>
         <dt data-local-shortcut="timestamp">Alt + T</dt><dd>编辑记录时，获取当前时间戳</dd>
         <dt data-local-shortcut="save">Ctrl + Enter</dt><dd>保存正在编辑的记录</dd>
-        <dt>Esc</dt><dd>关闭最上层窗口，保留草稿</dd>
+        <dt>Esc</dt><dd>完整首页内关闭最上层窗口；视频页交给播放器</dd>
         <dt>/</dt><dd>搜索记录库</dd>
         <dt>N</dt><dd>新建记录</dd>
         <dt>S / L</dt><dd>进入设置 / 返回记录库</dd>
@@ -57,11 +56,31 @@
             <div class="topbar__row">
               <div class="topbar__left">
                 <h1 class="topbar__title topbar__title--brand">
-                  <span class="brand-mark">旁白</span>
+                  <button type="button" id="btnBrandHome" class="brand-home" aria-label="打开旁白首页"><span class="brand-mark">旁白</span></button>
                   <span class="brand-mark-en" aria-hidden="true">Aside</span>
                 </h1>
               </div>
               <div class="topbar__actions">
+                <div class="tip-toggle-wrap" id="tipToggleWrap">
+                  <button
+                    type="button"
+                    class="tip-toggle"
+                    id="btnOnboardToggle"
+                    aria-label="使用帮助"
+                    aria-expanded="false"
+                    aria-controls="onboardBanner"
+                    title="使用帮助"
+                  >
+                    <svg class="icon-tip" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M8.5 4a4.5 4.5 0 0 0-2.6 8.2V14h5.2v-1.8A4.5 4.5 0 0 0 8.5 4Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M7 17h3M14.5 2v3M13 3.5h3M16 8h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                  </button>
+                  <div class="tip-pointer" id="tipPointer" hidden aria-hidden="true">
+
+                    <span class="tip-pointer__hint">第一次使用？从这里开始</span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   class="theme-toggle"
@@ -87,26 +106,6 @@
                     </svg>
                   </span>
                 </button>
-                <div class="tip-toggle-wrap" id="tipToggleWrap">
-                  <button
-                    type="button"
-                    class="tip-toggle"
-                    id="btnOnboardToggle"
-                    aria-label="使用帮助"
-                    aria-expanded="false"
-                    aria-controls="onboardBanner"
-                    title="使用帮助"
-                  >
-                    <svg class="icon-tip" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path d="M8.5 4a4.5 4.5 0 0 0-2.6 8.2V14h5.2v-1.8A4.5 4.5 0 0 0 8.5 4Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M7 17h3M14.5 2v3M13 3.5h3M16 8h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                    </svg>
-                  </button>
-                  <div class="tip-pointer" id="tipPointer" hidden aria-hidden="true">
-                    
-                    <span class="tip-pointer__hint">第一次使用？从这里开始</span>
-                  </div>
-                </div>
                 <button
                   type="button"
                   class="text-link text-link--top"
@@ -177,18 +176,17 @@
               <div class="error-text" id="errTitle"></div>
             </div>
 
-            <details class="video-classification"><summary>视频分类（可选）</summary><div class="field">
-              <label class="label" for="movieTagInput">视频分类（可选）</label>
-              <div id="movieTagsDisplay" class="selected-tags"></div>
-              <input
-                id="movieTagInput"
-                class="input"
-                type="text"
-                placeholder="访谈、电影、学习…"
-                autocomplete="off"
-              />
-            </div>
-            </details></div><!-- /newMovieMetaFields -->
+            <div class="video-classification" role="group" aria-labelledby="categoryLabel">
+              <span class="label" id="categoryLabel">视频分类 <span class="optional">可选，可多选</span></span>
+              <div class="category-picker">
+              <div class="category-options" id="movieCategoryOptions"></div>
+              <div class="category-custom-row">
+                <div id="movieTagsDisplay" class="selected-tags"></div>
+                <label class="category-add"><span aria-hidden="true">＋</span><input id="movieTagInput" type="text" aria-label="自定义视频分类" placeholder="自定义分类" maxlength="40" autocomplete="off" /></label>
+                <button type="button" id="btnAddMovieTag" class="text-link category-confirm" hidden>添加</button>
+              </div>
+              </div>
+            </div></div><!-- /newMovieMetaFields -->
 
             <div class="field">
               <label class="label" for="entryContent">记录内容</label>
@@ -208,46 +206,42 @@
               <div class="error-text" id="errContent"></div>
             </div>
 
-            <div class="field">
+            <div class="field timestamp-field">
               <span class="label">视频位置 <span class="optional">可选</span></span><p id="timeAvailability" class="field-caption" hidden>当前页面无法获取时间，可手动填写</p>
-              <div class="ts-mode ts-mode--underline" role="tablist">
-                <button type="button" class="ts-mode__btn ts-mode__btn--on" id="modePoint" role="tab">时间点</button>
-                <button type="button" class="ts-mode__btn" id="modeRange" role="tab">时间段</button>
+              <div class="ts-mode ts-mode--underline" role="tablist" aria-label="记录视频位置">
+                <button type="button" class="ts-mode__btn ts-mode__btn--on" id="modePoint" role="tab" aria-controls="blockPoint" aria-selected="true">某个时刻</button>
+                <button type="button" class="ts-mode__btn" id="modeRange" role="tab" aria-controls="blockRange" aria-selected="false">一个片段</button>
               </div>
 
-              <div id="blockPoint" class="ts-block">
+              <p class="field-caption timestamp-hint" id="timestampHint">点时间可直接修改，填写 分:秒 或 时:分:秒。</p>
+              <div id="blockPoint" class="ts-block" role="tabpanel" aria-labelledby="modePoint">
                 <div class="ts-inline">
-                  <svg class="ts-inline__icon icon-timer" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="10" cy="11" r="6.5" stroke="currentColor" stroke-width="1.4"/>
-                    <path d="M10 7.5 v3.5 l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="8" y1="2" x2="12" y2="2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                  </svg>
                   <input
                     id="stampPointInput"
                     class="input input--ts"
                     type="text"
-                    placeholder="例如 12:34" aria-label="视频时间"
+                    placeholder="分:秒" aria-label="视频时间" aria-describedby="timestampHint"
                     autocomplete="off"
                   />
-                  <button class="text-link text-link--inline editor-time" id="btnGetTime" type="button"><span>获取当前时间</span></button>
-                  <button type="button" class="icon-btn icon-btn--x" id="btnClearStamp" title="清除" disabled>×</button>
+                  <button class="text-link text-link--inline editor-time" id="btnGetTime" type="button"><span>使用当前播放位置</span></button>
+                  <button type="button" class="icon-btn icon-btn--x" id="btnClearStamp" title="移除时间" aria-label="移除时间" disabled>×</button>
                 </div>
                 <div class="error-text" id="errTimePoint"></div>
                 <img id="thumbPreviewPoint" class="thumb-preview" alt="" hidden />
               </div>
 
-              <div id="blockRange" class="ts-block" hidden>
+              <div id="blockRange" class="ts-block" role="tabpanel" aria-labelledby="modeRange" hidden>
                 <div class="ts-inline ts-inline--range">
                   <span class="ts-inline__label">起点</span>
                   <input
                     aria-label="开始时间" id="stampStartInput"
                     class="input input--ts"
                     type="text"
-                    placeholder="例如 12:34"
+                    placeholder="分:秒"
                     autocomplete="off"
                   />
-                  <button type="button" class="text-link text-link--inline" id="btnGetStart">获取</button>
-                  <button type="button" class="icon-btn icon-btn--x" id="btnClearStart" title="清除">×</button>
+                  <button type="button" class="text-link text-link--inline" id="btnGetStart">设为当前</button>
+                  <button type="button" class="icon-btn icon-btn--x" id="btnClearStart" title="清除起点" aria-label="清除起点">×</button>
                 </div>
                 <div class="ts-inline ts-inline--range">
                   <span class="ts-inline__label">终点</span>
@@ -255,11 +249,11 @@
                     aria-label="结束时间" id="stampEndInput"
                     class="input input--ts"
                     type="text"
-                    placeholder="例如 12:34"
+                    placeholder="分:秒"
                     autocomplete="off"
                   />
-                  <button type="button" class="text-link text-link--inline" id="btnGetEnd">获取</button>
-                  <button type="button" class="icon-btn icon-btn--x" id="btnClearEnd" title="清除">×</button>
+                  <button type="button" class="text-link text-link--inline" id="btnGetEnd">设为当前</button>
+                  <button type="button" class="icon-btn icon-btn--x" id="btnClearEnd" title="清除终点" aria-label="清除终点">×</button>
                 </div>
                 <div class="error-text" id="errTimeRange"></div>
                 <img id="thumbPreviewRange" class="thumb-preview" alt="" hidden />
@@ -269,13 +263,13 @@
             <div class="field">
               <label class="label" for="tagInput">标签 <span class="optional">可选</span></label>
               <div class="tag-input-row">
-                <input id="tagInput" class="input" type="text" placeholder="输入标签后回车，如 观点、创作、待实践" />
+                <input id="tagInput" class="input" type="text" placeholder="添加标签，回车确认" />
               </div>
               <div id="entryTagsDisplay" class="entry-tags"></div>
             </div>
 
             <div class="actions actions--links">
-              
+
               <button class="text-link text-link--muted" id="btnReset" type="button">清空</button>
               <button class="text-link" id="btnSave" type="button">保存记录</button>
             </div>

@@ -60,6 +60,15 @@
   const listeners = new Set();
   const isScene = location.pathname === '/__agentation/scene.html';
   const scene = () => isScene ? window : window.parent !== window && window.parent.location.origin === location.origin && window.parent.__asidePreviewDispatch ? window.parent : null;
+  // Emulate the browser-level library shortcut while focus is inside the preview iframe.
+  // Real installations receive this command from Chrome's background worker.
+  window.addEventListener('keydown', event => {
+    if (isScene || event.isComposing || event.repeat || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.code !== 'KeyL') return;
+    const host = scene();
+    if (!host) return;
+    event.preventDefault();
+    void host.__asidePreviewDispatch({type:'MN_TOGGLE_LIBRARY',tabId:7});
+  });
   window.__asidePreviewDispatch = message => new Promise(resolve => {
     let handled = false;
     for (const listener of listeners) {

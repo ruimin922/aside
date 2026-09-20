@@ -984,6 +984,10 @@ async function onExportModalNotion(button = el.btnExportNotion) {
 
 function setTimestampMode(mode) {
   state.timestampMode = mode === "range" ? "range" : "point";
+  el.modePoint.tabIndex = state.timestampMode === "point" ? 0 : -1;
+  el.modeRange.tabIndex = state.timestampMode === "range" ? 0 : -1;
+  el.modePoint.setAttribute('aria-selected', String(state.timestampMode === 'point'));
+  el.modeRange.setAttribute('aria-selected', String(state.timestampMode === 'range'));
   el.modePoint.classList.toggle("ts-mode__btn--on", state.timestampMode === "point");
   el.modeRange.classList.toggle("ts-mode__btn--on", state.timestampMode === "range");
   el.blockPoint.hidden = state.timestampMode !== "point";
@@ -1023,7 +1027,7 @@ function clearErrors() {
 
 function autosizeTextarea() {
   el.entryContent.style.height = "auto";
-  el.entryContent.style.height = `${Math.min(360, Math.max(120, el.entryContent.scrollHeight))}px`;
+  el.entryContent.style.height = `${Math.min(320, Math.max(112, el.entryContent.scrollHeight))}px`;
 }
 
 function updateWordCount() {
@@ -1093,17 +1097,35 @@ function makePill(label, onRemove) {
   return btn;
 }
 
+const movieCategoryPresets = ['访谈', '电影', '学习', '播客'];
 function renderMovieTagsUi() {
-  el.movieTagsDisplay.innerHTML = "";
-  for (const g of state.movieTags) {
-    el.movieTagsDisplay.appendChild(
-      makePill(`#${g}`, () => {
-        state.movieTags = state.movieTags.filter((x) => x !== g);
-        renderMovieTagsUi();
-        scheduleDraftSave();
-      })
-    );
+  const options = document.getElementById('movieCategoryOptions');
+  const focusedCategory = options.contains(document.activeElement) ? document.activeElement.dataset.category : null;
+  options.replaceChildren();
+  for (const category of movieCategoryPresets) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'category-chip';
+    button.dataset.category = category;
+    button.textContent = category;
+    button.setAttribute('aria-pressed', String(state.movieTags.includes(category)));
+    button.addEventListener('click', () => {
+      state.movieTags = state.movieTags.includes(category) ? state.movieTags.filter(tag => tag !== category) : [...state.movieTags, category];
+      state.dirty = true; renderMovieTagsUi(); scheduleDraftSave();
+    });
+    options.appendChild(button);
+    if (focusedCategory === category) button.focus();
   }
+  el.movieTagsDisplay.replaceChildren();
+  for (const g of state.movieTags.filter(tag => !movieCategoryPresets.includes(tag))) {
+    const pill = makePill(g, () => {
+      state.movieTags = state.movieTags.filter(x => x !== g);
+      state.dirty = true; renderMovieTagsUi(); scheduleDraftSave();
+      el.movieTagInput.focus();
+    });
+    pill.setAttribute('aria-label', `移除分类 ${g}`);
+    el.movieTagsDisplay.appendChild(pill);
+  }
+  document.getElementById('btnAddMovieTag').hidden = !el.movieTagInput.value.trim();
 }
 
 function addMovieTagFromRaw(raw) {
@@ -1111,8 +1133,8 @@ function addMovieTagFromRaw(raw) {
   if (!g) return;
   g = g.replace(/^#+/, "").trim();
   if (!g) return;
-  if (state.movieTags.includes(g)) return;
-  state.movieTags.push(g);
+  if (!state.movieTags.includes(g)) state.movieTags.push(g);
+  state.dirty = true;
   if (el.movieTagInput) el.movieTagInput.value = "";
   renderMovieTagsUi();
   scheduleDraftSave();
@@ -1156,7 +1178,7 @@ async function onGetCurrentTime(which) {
   }
   const res = await safeSend(tabId, { type: "GET_VIDEO_TIME" });
   if (!res?.success) {
-    el.errTimePoint.textContent = res?.error || "未检测到视频，请确认视频已加载";
+    (which === "point" ? el.errTimePoint : el.errTimeRange).textContent = res?.error || "未检测到视频，请确认视频已加载";
     showToast("未检测到视频，请确认视频已加载", "warn");
     return;
   }
@@ -1400,6 +1422,7 @@ async function captureThumbnailAt(timeSec) {
 async function onSave() {
   if (state.savingEntry || !el.entryContent.value.trim()) return;
   clearErrors();
+  addMovieTagFromRaw(el.movieTagInput.value);
   const title = el.movieTitle.value.trim();
   const content = el.entryContent.value.trim();
   const movieTags = [...state.movieTags];
@@ -1483,6 +1506,7 @@ async function onSave() {
 function onReset() {
   clearErrors();
   el.movieTitle.value = state.draftPrefill.title || "";
+  el.movieTagInput.value = "";
   state.movieTags = [...(state.draftPrefill.movieTags || [])];
   renderMovieTagsUi();
   el.entryContent.value = "";
@@ -1514,6 +1538,7 @@ function collectDraftPayload() {
     videoUrl: state.formVideoUrl,
     thumbnail: state.thumbnailDataUrl || null,
     movieTags: [...state.movieTags],
+    movieTagInput: el.movieTagInput.value,
     timestampMode: state.timestampMode,
     pointSeconds: state.pointSeconds,
     rangeStartSeconds: state.rangeStartSeconds,
@@ -1533,6 +1558,7 @@ function scheduleDraftSave() {
     const has =
       d.movieTitle.trim() ||
       d.content.trim() ||
+      d.movieTagInput.trim() ||
       (d.movieTags && d.movieTags.length) ||
       d.tags.length ||
       d.stampPointInput.trim() ||
@@ -1557,6 +1583,7 @@ async function applyDraft(d) {
   state.thumbnailDataUrl=d.thumbnail || null;
   state.formVideoUrl=d.videoUrl || null;
   if(d.sourceMovieId){const notes=await getAllNotes();state.detailMovie=notes.find(n=>n.id===d.sourceMovieId)||null;state.detailMovieId=state.detailMovie?.id||null;state.newFromDetail=Boolean(state.detailMovie);}
+  el.movieTagInput.value = d.movieTagInput || "";
   state.movieTags = normalizeTagArray(d.movieTags ?? d.movieGenre);
   renderMovieTagsUi();
   setTimestampMode(d.timestampMode === "range" ? "range" : "point");
@@ -2482,6 +2509,7 @@ function jumpToNewPrefilled(title, tags, hideMovieMeta = false, fromDetail = fal
   el.thumbPreviewPoint.hidden = true; el.thumbPreviewRange.hidden = true;
   state.draftPrefill = { title: (title || "").trim(), movieTags: normalizeTagArray(tags) };
   el.movieTitle.value = state.draftPrefill.title;
+  el.movieTagInput.value = "";
   state.movieTags = [...state.draftPrefill.movieTags];
   renderMovieTagsUi();
   el.entryContent.value = "";
@@ -2606,10 +2634,8 @@ function bindEvents() {
     if (!embedded || event.source !== window.parent || event.data?.type !== 'MN_NAVIGATE_HOME') return;
     void navigateWithKeyboard(VIEWS.LIST);
   });
-  document.getElementById('btnCloseLibrary').hidden=!floatingSurface;
-  document.getElementById('btnCloseLibrary').addEventListener('click',()=>runLibraryAction('close'));
-  document.getElementById('btnOpenFull').hidden=!floatingSurface;
-  document.getElementById('btnOpenFull').addEventListener('click',async()=>{
+  document.getElementById('btnBrandHome').addEventListener('click',async()=>{
+    if (!floatingSurface) { await navigateWithKeyboard(VIEWS.LIST); return; }
     if (state.currentView === VIEWS.NEW) { clearTimeout(state.draftSaveTimer); await saveDraft(collectDraftPayload()); }
     await chrome.tabs.create({url:chrome.runtime.getURL(`panel.html?sourceTab=${sourceTabId}`)});
     await runLibraryAction('close');
@@ -2640,10 +2666,11 @@ function bindEvents() {
   document.addEventListener('keydown',e=>{
     if(e.isComposing || e.keyCode === 229 || e.repeat || e.defaultPrevented) return;
     const modalOpen = !el.onboardBanner.hidden || el.confirmModal?.hidden === false || el.exportModal?.hidden === false;
+    if (e.key==='Escape' && floatingSurface && !modalOpen) return;
     if (e.key==='Escape' && !modalOpen) {
       if (state.currentView===VIEWS.DETAIL && el.detailEntries.querySelector('textarea')) return;
       if (state.currentView !== VIEWS.LIST) { e.preventDefault();void navigateWithKeyboard(VIEWS.LIST);return; }
-      if (floatingSurface) { e.preventDefault();void runLibraryAction('close');return; }
+      if (floatingSurface) return;
     }
     if (e.key === 'Tab' && embedded && !modalOpen) {
       const controls=[...document.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,[tabindex="0"]')].filter(n=>n.getClientRects().length && getComputedStyle(n).visibility!=='hidden');
@@ -2766,14 +2793,28 @@ function bindEvents() {
   });
 
   el.modePoint.addEventListener("click", () => {
+    if (!el.stampPointInput.value.trim() && el.stampStartInput.value.trim()) {
+      el.stampPointInput.value = el.stampStartInput.value; validatePointInput();
+    }
     setTimestampMode("point");
     scheduleDraftSave();
   });
   el.modeRange.addEventListener("click", () => {
+    if (!el.stampStartInput.value.trim() && el.stampPointInput.value.trim()) {
+      el.stampStartInput.value = el.stampPointInput.value;
+      state.rangeStartSeconds = parseTimeToSeconds(el.stampStartInput.value);
+    }
+    clearErrors();
     setTimestampMode("range");
     scheduleDraftSave();
   });
 
+  for (const tab of [el.modePoint, el.modeRange]) tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    const target = event.key === 'Home' ? el.modePoint : event.key === 'End' ? el.modeRange : tab === el.modePoint ? el.modeRange : el.modePoint;
+    target.click(); target.focus();
+  });
   el.btnGetTime.addEventListener("click", () => onGetCurrentTime("point"));
   el.btnGetStart.addEventListener("click", () => onGetCurrentTime("start"));
   el.btnGetEnd.addEventListener("click", () => onGetCurrentTime("end"));
@@ -2787,6 +2828,7 @@ function bindEvents() {
     state.thumbnailDataUrl = null;
     el.thumbPreviewPoint.hidden = true;
     el.thumbPreviewPoint.removeAttribute("src");
+    state.dirty = true; scheduleDraftSave();
   });
 
   el.btnClearStart?.addEventListener("click", () => {
@@ -2795,6 +2837,7 @@ function bindEvents() {
     el.errTimeRange.textContent = "";
     el.stampStartInput.classList.remove("is-invalid");
     validateRangeInputs();
+    state.dirty = true; scheduleDraftSave();
     if (!el.stampStartInput.value.trim() && !el.stampEndInput.value.trim()) {
       state.thumbnailDataUrl = null;
       el.thumbPreviewRange.hidden = true;
@@ -2807,6 +2850,7 @@ function bindEvents() {
     el.errTimeRange.textContent = "";
     el.stampEndInput.classList.remove("is-invalid");
     validateRangeInputs();
+    state.dirty = true; scheduleDraftSave();
     if (!el.stampStartInput.value.trim() && !el.stampEndInput.value.trim()) {
       state.thumbnailDataUrl = null;
       el.thumbPreviewRange.hidden = true;
@@ -2887,7 +2931,14 @@ function bindEvents() {
     state.composing = false;
   });
 
+  // Keep the add control open if a narrow row wraps beneath the pointer.
+  const categoryPicker = document.querySelector('.category-picker');
+  const categoryAdd = categoryPicker.querySelector('.category-add');
+  categoryAdd.addEventListener('pointerenter', () => categoryAdd.classList.add('is-expanded'));
+  categoryPicker.addEventListener('pointerleave', () => categoryAdd.classList.remove('is-expanded'));
+  document.getElementById("btnAddMovieTag").addEventListener("click", () => { addMovieTagFromRaw(el.movieTagInput.value); el.movieTagInput.focus(); });
   el.movieTagInput?.addEventListener("input", () => {
+    document.getElementById("btnAddMovieTag").hidden = !el.movieTagInput.value.trim();
     state.dirty = true;
     scheduleDraftSave();
   });
@@ -3063,8 +3114,10 @@ function tryFocusEntry() {
 }
 
 async function startCapture(fromKeyboard = false) {
-  if (embedded && state.supported) { await runLibraryAction('quick'); return; }
-  if (!el.entryContent.value.trim()) {
+  if (embedded && state.supported) {
+    await runLibraryAction('quick'); return;
+  }
+  if (!el.entryContent.value.trim() && !state.movieTags.length && !el.movieTagInput.value.trim()) {
     state.newFromDetail=false;state.formVideoUrl=null;el.movieTitle.value='';state.movieTags=[];renderMovieTagsUi();
   }
   setView(VIEWS.NEW); await maybePrefillTitleAndCover();

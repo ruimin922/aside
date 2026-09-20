@@ -9,7 +9,7 @@ import base64
 import subprocess
 
 ROOT = Path(__file__).resolve().parent
-MASTER = ROOT / 'brand/aside-monochrome/aside-icon.png'
+MASTER = ROOT / 'brand/aside-film-transparent/aside-icon.png'
 if not MASTER.is_file():
     raise SystemExit(f'Missing approved master: {MASTER}')
 for size in (16, 32, 48, 128):

@@ -1,6 +1,6 @@
 (() => {
-if (globalThis.__asideContentLoaded === '1.9.5') return;
-globalThis.__asideContentLoaded = '1.9.5';
+if (globalThis.__asideContentLoaded === '1.9.6') return;
+globalThis.__asideContentLoaded = '1.9.6';
 const playerDock = globalThis.__asidePlayerDock;
 const nativeShortcuts = Boolean(chrome.runtime.getManifest?.().commands?.['quick-note']);
 function formatSeconds(sec) {

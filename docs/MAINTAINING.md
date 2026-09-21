@@ -13,6 +13,7 @@
 2. 通过本地检查和真实 Chrome 验收后，提交并推送代码。
 3. 创建与版本一致的 `v版本` 标签并推送；GitHub Actions 检查通过后发布 Release，包含 ZIP 与 SHA-256。
 4. Release 中的源码归档包含整个项目；给体验者下载的是 `aside-v版本.zip`。
+5. Chrome 应用商店上传必须使用 `aside-v版本-chrome-web-store.zip`，在已有「旁白」条目的「软件包」中上传更新，不要新建条目。此包自动移除 manifest 的 `key`；普通 ZIP 与源码仍保留该字段以固定本地开发 ID。两种包其余运行文件一致，由打包脚本校验。
 
 GitHub 发布不会自动更新 Chrome 中的开发者模式插件。正式用户的自动更新通过 Chrome Web Store；可以在以后接入商店上传 API，但仍需遵守审核与发布流程。
 

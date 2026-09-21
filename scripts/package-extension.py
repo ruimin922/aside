@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a deterministic, runtime-only Chrome ZIP; no secrets or preview tooling."""
+"""Build separate deterministic local-install and Chrome Web Store ZIPs."""
 import hashlib
 import json
 import re
@@ -53,20 +53,35 @@ def main():
         required += entry['resources']
     assert all(name in FILES for name in required), 'Manifest resource missing'
     OUT.mkdir(exist_ok=True)
-    archive = OUT / f'aside-v{version}.zip'
-    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
-        for name in sorted(FILES):
-            info = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0))
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
-            bundle.writestr(info, (SOURCE / name).read_bytes())
-    with zipfile.ZipFile(archive) as bundle:
-        assert bundle.testzip() is None
-        assert json.loads(bundle.read('manifest.json'))['version'] == version
-        assert set(bundle.namelist()) == set(FILES)
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    (OUT / f'{archive.name}.sha256').write_text(f'{digest}  {archive.name}\n')
-    print(f'{archive}\n{len(FILES)} runtime files; {archive.stat().st_size:,} bytes; SHA256 {digest}')
+    for store in (False, True):
+        suffix = '-chrome-web-store' if store else ''
+        archive = OUT / f'aside-v{version}{suffix}.zip'
+        packaged_manifest = dict(manifest)
+        if store:
+            # Keep the source/local key for stable development identity. The store
+            # assigns identity from the existing listing; its upload rejects key.
+            packaged_manifest.pop('key')
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
+            for name in sorted(FILES):
+                info = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16
+                data = (SOURCE / name).read_bytes()
+                if store and name == 'manifest.json':
+                    data = (json.dumps(packaged_manifest, ensure_ascii=False, indent=2) + '\n').encode()
+                bundle.writestr(info, data)
+        with zipfile.ZipFile(archive) as bundle:
+            assert bundle.testzip() is None
+            actual_manifest = json.loads(bundle.read('manifest.json'))
+            assert actual_manifest == packaged_manifest, 'Packaged manifest mismatch'
+            assert ('key' not in actual_manifest) if store else actual_manifest['key'] == manifest['key']
+            assert set(bundle.namelist()) == set(FILES)
+            for name in FILES:
+                if name != 'manifest.json':
+                    assert bundle.read(name) == (SOURCE / name).read_bytes(), f'Runtime changed: {name}'
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        (OUT / f'{archive.name}.sha256').write_text(f'{digest}  {archive.name}\n')
+        print(f'{archive}\n{len(FILES)} runtime files; {archive.stat().st_size:,} bytes; SHA256 {digest}')
 
 if __name__ == '__main__':
     main()

@@ -12,6 +12,8 @@
 
 解压覆盖原插件目录，在 chrome://extensions 重新加载旁白，再刷新视频页面。
 
+Chrome 应用商店更新：上传 `aside-v1.9.10-chrome-web-store.zip`（不要解压）。此专用包已移除商店不接受的 manifest `key` 字段；原 `aside-v1.9.10.zip` 仅用于本地安装。请进入现有「旁白」条目上传更新，保留原扩展身份与用户。
+
 独立部署的数据库需具备 `supabase/002-reliable-sync.sql` 的同步结构；仅升级插件不会自动迁移数据库。
 
 ## 验证

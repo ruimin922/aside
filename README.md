@@ -34,6 +34,7 @@
 截图来自本地示例预览，使用示例数据；具体交互以当前源码为准。
 
 - **体验最新插件**：[Releases](https://github.com/ruimin922/aside/releases) → 下载 `aside-v版本.zip`。
+- **上传 Chrome 应用商店**：下载 `aside-v版本-chrome-web-store.zip`，在已有插件条目中上传。商店包会移除仅供本地固定扩展 ID 的 `key` 字段。
 - **本次改动与安装说明**：[1.9.10](docs/RELEASE-1.9.10.md)。本地包由 `npm run package` 生成；GitHub Releases 中的版本以实际发布为准。
 - **设计过程**：[定位与交互](DESIGN-UPGRADE.md) · [视觉系统](DESIGN-1.8.md) · [首页信息层级](DESIGN-1.8.4.md)。历史文档记录当时的取舍，当前实现以最新版本为准。
 - **工程与维护**：[本地可靠性与云同步](TECHNICAL-UPGRADE.md) · [迭代发布流程](docs/MAINTAINING.md)。

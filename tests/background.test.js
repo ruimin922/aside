@@ -68,7 +68,7 @@ test('toolbar reuses a content host, injects only when needed, and falls back on
   chrome.tabs.sendMessage=async(id,msg)=>{calls.push(['message',id,msg]);if(first){first=false;throw Error('no receiver');}return{success:true};};
   await actionClick({id:23});
   assert.deepEqual(calls.map(c=>c[0]),['message','inject','message']);
-  assert.deepEqual(calls[1][1].files,['player-dock.js','content.js']);
+  assert.deepEqual(calls[1][1].files,['player-dock.js','library-presence.js','content.js']);
   calls.length=0;
   chrome.tabs.sendMessage=async()=>{throw Error('no receiver');};
   chrome.scripting.executeScript=async()=>{throw Error('restricted browser page');};

@@ -2,6 +2,7 @@ import { extractNotionPageId, createNotionPageWithMarkdown, verifyNotionConnecti
 import { bindHelpSnap } from "./utils/help-snap.js";
 import { isSupportedUrl, videoIdentity } from "./utils/platform.js";
 import { getOwner } from "./utils/local-data.js";
+import { describeSyncFailure } from "./utils/sync-feedback.js";
 import {
   getAllNotes,
   saveEntry,
@@ -37,14 +38,10 @@ async function signInWithGoogle() {
 
 import {
   pushNote,
-  pushAll,
+  synchronize,
   softDeleteMovie,
-  pull,
-  flushPending,
   markPending,
-  getPendingIds,
-  repairUnpushedIfNeeded,
-  isLoggedIn
+  getPendingIds
 } from "./utils/sync.js";
 
 import { formatSeconds, extractTagsFromContent } from "./utils/common.js";
@@ -176,6 +173,22 @@ function setSyncDot(st) {
   if (dot) dot.dataset.state = st;
   const label = document.getElementById("accountStatusText");
   if (label) label.textContent = ({ syncing: "同步中", ok: "已同步", pending: "待同步", error: "同步失败", hidden: "" })[st] || "等待同步";
+  const hint = document.getElementById('accountSyncHint');
+  if (hint) { hint.hidden = true; hint.textContent = ''; }
+}
+
+function showSyncFailure(error) {
+  const feedback = describeSyncFailure(error);
+  setSyncDot('error');
+  const label = document.getElementById('accountStatusText');
+  if (label) label.textContent = feedback.label;
+  const hint = document.getElementById('accountSyncHint');
+  if (hint) { hint.textContent = feedback.message; hint.hidden = false; }
+}
+
+function showSyncResult(pending) {
+  setSyncDot(pending.size ? 'pending' : 'ok');
+  if (pending.size) document.getElementById('accountStatusText').textContent = `${pending.size} 个视频待同步`;
 }
 
 // 写入后调用（fire-and-forget，不阻塞 UI）
@@ -186,11 +199,11 @@ async function syncPush(movieId) {
     const notes = await getAllNotes();
     const note  = notes.find((n) => n.id === movieId);
     if (note) await pushNote(note, _syncUserId);
-    setSyncDot("ok");
+    showSyncResult(await getPendingIds());
   } catch (e) {
     console.warn("[sync] push failed", e?.message);
     await markPending(movieId);
-    setSyncDot("pending");
+    showSyncFailure(e);
     showToast(`同步失败：${e?.message || "网络错误"}`, "danger");
   }
 }
@@ -200,9 +213,10 @@ async function syncDelete(movieId) {
   if (!_syncUserId) return;
   try {
     await softDeleteMovie(movieId);
+    showSyncResult(await getPendingIds());
   } catch (e) {
     console.warn("[sync] soft-delete failed", e?.message);
-    setSyncDot("pending");
+    showSyncFailure(e);
     showToast("已在本地删除，联网后继续同步", "danger");
   }
 }
@@ -244,23 +258,18 @@ function renderAccountUi(user) {
 async function resyncAll() {
   if (!_syncUserId) { showToast("请先登录", "danger"); return; }
   const btn = document.getElementById("btnResyncAll");
+  if (btn?.disabled) return;
   if (btn) { btn.disabled = true; btn.textContent = "同步中…"; }
   setSyncDot("syncing");
   try {
-    const notes = await getAllNotes();
-    const totalEntries = notes.reduce((sum, n) => sum + (n.entries?.length || 0), 0);
-    if (notes.length === 0) {
-      setSyncDot("ok");
-      showToast("本地没有笔记可同步", "danger");
-      return;
-    }
-    await pushAll(notes, _syncUserId);
-    setSyncDot("ok");
-    showToast(`同步完成：${notes.length} 个视频 / ${totalEntries} 条记录`, "good");
+    const pending = await synchronize(_syncUserId, { forcePush: true });
+    await refreshList();
+    showSyncResult(pending);
+    showToast(pending.size ? '仍有待同步的修改，请稍后重试' : '云端与本地已同步', pending.size ? 'warn' : 'good');
   } catch (e) {
     console.warn("[sync] resync failed", e);
-    setSyncDot("pending");
-    showToast(`同步失败：${e?.message || "网络错误"}`, "danger");
+    showSyncFailure(e);
+    showToast(describeSyncFailure(e).label, "danger");
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "立即同步"; }
   }
@@ -279,31 +288,12 @@ async function initAccount() {
   setSyncDot("syncing");
 
   try {
-    // 拉取远端变更并合并到本地
-    const local  = await getAllNotes();
-    const merged = await pull(local);
-
+    const stillPending = await synchronize(_syncUserId);
     await refreshList();
-
-    // 一次性修复：老版本 bg 未推送的本地数据补推
-    await repairUnpushedIfNeeded(await getAllNotes());
-
-    // 重试离线期间失败的推送（含修复产生的 pending）
-    await flushPending(await getAllNotes(), _syncUserId);
-    const stillPending = await getPendingIds();
-    const elStatusText = document.getElementById("accountStatusText");
-    if (stillPending.size > 0) {
-      setSyncDot("pending");
-      if (elStatusText) elStatusText.textContent = `${stillPending.size} 条待同步`;
-    } else {
-      setSyncDot("ok");
-      if (elStatusText) elStatusText.textContent = "已同步";
-    }
+    showSyncResult(stillPending);
   } catch (e) {
-    console.warn("[sync] init pull failed", e?.message);
-    setSyncDot("pending");
-    const elStatusText = document.getElementById("accountStatusText");
-    if (elStatusText) elStatusText.textContent = "同步待定";
+    console.warn("[sync] initialization failed", e?.message);
+    showSyncFailure(e);
   }
   } catch (e) {
     console.warn("[sync] initAccount failed", e?.message);
@@ -1735,7 +1725,13 @@ async function refreshList() {
     const url = note.videoUrl || note.entries?.find(e=>e.videoUrl)?.videoUrl;
     meta.textContent = `${url ? platformFromUrl(url)+' · ' : ''}${note.entries?.length || 0} 条记录 · ${formatRelativeTime(note.updatedAt || note.createdAt)}`;
     body.append(title,meta); toggle.append(chevron,body);
-    const detail = document.createElement('button'); detail.type='button'; detail.className='movie-card__detail'; detail.textContent='查看详情';
+    const detail = document.createElement('button'); detail.type='button'; detail.className='movie-card__detail';
+    detail.title = '查看详情';
+    detail.setAttribute('aria-label', `查看详情：${note.movieTitle || '未命名视频'}`);
+    detail.innerHTML = `<svg class="detail-lines" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <path d="M4 6.5h12M4 12h7M4 17.5h5"/>
+      <path class="detail-lines__arrow" d="M14 15h7m-3.5-3.5L21 15l-3.5 3.5"/>
+    </svg>`;
     detail.addEventListener('click',()=>openDetail(note.id));
     top.append(toggle,detail);
     const preview = document.createElement('div'); preview.className='note-preview'; preview.id=`preview-${note.id}`;
@@ -2629,10 +2625,52 @@ async function renderLog() {
   }
 }
 
+function resetLibraryHome() {
+  // Keep unsaved writing safe, but do not reopen its screen on the next visit.
+  if (state.currentView === VIEWS.NEW) {
+    clearTimeout(state.draftSaveTimer);
+    void saveDraft(collectDraftPayload()).catch(() => showToast('草稿保存失败，请重试','warn'));
+  }
+  if (!el.onboardBanner.hidden) setOnboardingExpanded(false);
+  if (!$('confirmModal').hidden) $('confirmModalCancel').click();
+  closeExportModal();
+  closeNotionSettings();
+  state.listQuery = '';
+  el.searchInput.value = '';
+  state.expandedMovieId = null;
+  setView(VIEWS.LIST);
+  document.querySelector('.main').scrollTop = 0;
+  el.viewList.scrollTop = 0;
+}
+
 function bindEvents() {
+  if (embedded) {
+    const pin = document.getElementById('btnPinLibrary');
+    pin.hidden = false;
+    const renderPin = value => {
+      const pinned = value === true;
+      pin.setAttribute('aria-pressed', String(pinned));
+      pin.setAttribute('aria-label', pinned ? '取消固定窗口' : '固定窗口');
+      pin.title = pinned ? '已固定 · 点击恢复移出自动收起' : '固定窗口 · 鼠标移出也保持打开';
+    };
+    void chrome.storage.local.get('asideLibraryPinned').then(data => renderPin(data.asideLibraryPinned));
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.asideLibraryPinned) renderPin(changes.asideLibraryPinned.newValue);
+    });
+    pin.addEventListener('click', async () => {
+      const pinned = pin.getAttribute('aria-pressed') !== 'true';
+      await chrome.storage.local.set({asideLibraryPinned:pinned});
+      renderPin(pinned);
+    });
+    // The library is cross-origin in real installations; report its pointer boundary
+    // through the extension channel, without accessing the parent page's DOM.
+    for (const event of ['pointerenter','pointerleave']) document.documentElement.addEventListener(event, e => {
+      if (e.pointerType === 'mouse') void safeSend(sourceTabId, {type:'MN_LIBRARY_POINTER',inside:event === 'pointerenter',x:e.clientX,y:e.clientY});
+    });
+  }
   window.addEventListener('message', event => {
     if (!embedded || event.source !== window.parent || event.data?.type !== 'MN_NAVIGATE_HOME') return;
-    void navigateWithKeyboard(VIEWS.LIST);
+    resetLibraryHome();
   });
   document.getElementById('btnBrandHome').addEventListener('click',async()=>{
     if (!floatingSurface) { await navigateWithKeyboard(VIEWS.LIST); return; }
@@ -2706,7 +2744,7 @@ function bindEvents() {
   });
   chrome.runtime.onMessage?.addListener((msg,_sender,respond)=>{
     if (msg?.type!=='MN_KEYBOARD_COMMAND') return;
-    if (msg.command==='toggle-library') setView(VIEWS.LIST);
+    if (msg.command==='toggle-library') resetLibraryHome();
     if (msg.command==='quick-note' && !state.composing && el.onboardBanner.hidden && el.confirmModal?.hidden !== false && el.exportModal?.hidden !== false) {
       if (state.currentView===VIEWS.NEW) el.entryContent.focus();else void startCapture(true);
     }
@@ -2972,23 +3010,16 @@ function bindEvents() {
       setSyncDot("syncing");
       showToast("登录成功，正在同步…", "good");
 
-      // 首次登录：把本地全部数据推上去
-      const notes = await getAllNotes();
-      await pushAll(notes, _syncUserId);
-
-      // 拉取远端（其他设备上的数据）
-      const merged = await pull(notes);
+      const pending = await synchronize(_syncUserId, { forcePush: true });
       await refreshList();
-      setSyncDot("ok");
-      showToast("同步完成 ✓", "good");
-      // 兜底：确保账号 UI 与最终状态一致
-      renderAccountUi(user);
+      showSyncResult(pending);
+      showToast(pending.size ? '仍有待同步的修改' : '同步完成 ✓', pending.size ? 'warn' : 'good');
     } catch (e) {
       console.error("[sync] login failed", e);
       // 只有真正失败（_syncUserId 未设置）才恢复按钮
       if (_syncUserId) {
-        setSyncDot("pending");
-        showToast(e?.message || "同步未完成，本地笔记已保留", "danger", 6000);
+        showSyncFailure(e);
+        showToast(describeSyncFailure(e).label, "danger", 6000);
         return;
       }
       showToast(e?.message || "登录失败，请重试", "danger", 4500);

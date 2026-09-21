@@ -77,6 +77,18 @@ export async function flushPending(_notes, userId) {
   });
 }
 
+// A manual retry must reconcile both directions, including an empty visible
+// library whose only remaining local records are deletion tombstones.
+export async function synchronize(userId, { forcePush = false } = {}) {
+  await requireOwner(userId);
+  if (forcePush) await pushAll(null, userId);
+  else await flushPending(null, userId);
+  await requireOwner(userId);
+  await pull();
+  await requireOwner(userId);
+  return getPendingIds();
+}
+
 async function selectAll(table, query, userId) {
   const rows = [];
   // Explicit pagination avoids the server's default row cap; full reconciliation avoids client-clock cursors.

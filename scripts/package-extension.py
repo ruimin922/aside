@@ -10,12 +10,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'movie-notes-extension'
 OUT = ROOT / 'dist'
-FILES = '''manifest.json background.js player-dock.js content.js panel.html panel.js panel.css
+FILES = '''manifest.json background.js player-dock.js library-presence.js content.js panel.html panel.js panel.css
 design.css theme.css cursor.css glass-grain.svg share.html share.js share.css
 icons/icon16.png icons/icon32.png icons/icon48.png icons/icon128.png
 vendor/marked.min.js vendor/qrcode-generator.js
 utils/notion.js utils/storage.js utils/help-snap.js utils/platform.js utils/common.js
-utils/local-data.js utils/supabase.js utils/sync.js utils/merge.js'''.split()
+utils/local-data.js utils/supabase.js utils/sync.js utils/sync-feedback.js utils/merge.js'''.split()
 
 def main():
     manifest = json.loads((SOURCE / 'manifest.json').read_text())

@@ -1,6 +1,6 @@
 (() => {
-if (globalThis.__asideContentLoaded === '1.9.6') return;
-globalThis.__asideContentLoaded = '1.9.6';
+if (globalThis.__asideContentLoaded === '1.9.10') return;
+globalThis.__asideContentLoaded = '1.9.10';
 const playerDock = globalThis.__asidePlayerDock;
 const nativeShortcuts = Boolean(chrome.runtime.getManifest?.().commands?.['quick-note']);
 function formatSeconds(sec) {
@@ -170,7 +170,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if (message.type === 'MN_TOGGLE_LIBRARY') {
     (async () => {
-      if (libraryOpen) hideLibrary(); else await showLibrary(message.tabId);
+      if (libraryOpen) hideLibrary(); else await showLibrary(message.tabId, true);
       return { success: true, open: libraryOpen };
     })().then(sendResponse, e => sendResponse({ success: false, error: e.message }));
     return true;
@@ -186,6 +186,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return { success: true };
     })().then(sendResponse, e => sendResponse({ success: false, error: e.message }));
     return true;
+  }
+  if (message.type === 'MN_LIBRARY_POINTER') {
+    if (message.inside) libraryPresence.enter();
+    else {
+      // Moving from the iframe onto the host's drag/resize edges stays inside.
+      const frame = libraryHost?.shadowRoot.querySelector('iframe')?.getBoundingClientRect();
+      const host = libraryHost?.getBoundingClientRect();
+      const x = frame?.left + message.x, y = frame?.top + message.y;
+      if (host && x >= host.left && x < host.right && y >= host.top && y < host.bottom) libraryPresence.enter();
+      else libraryPresence.leave();
+    }
+    sendResponse({success:true}); return;
   }
 
   if (message.type === "GET_VIDEO_TIME") {
@@ -376,6 +388,7 @@ let libraryOpen = false;
 let libraryBusy = false;
 let libraryTabId = null;
 let libraryReturnFocus = null;
+const libraryPresence = globalThis.__asideLibraryPresence(() => hideLibrary(false));
 let surfaceTheme = 'dark';
 let surfaceThemeRevision = 0;
 function applySurfaceTheme(value) {
@@ -396,12 +409,16 @@ function restorePageFocus(preferred) {
   target.focus({preventScroll:true});
 }
 
-function hideLibrary() {
+function hideLibrary(restoreFocus = true) {
   const wasOpen = libraryOpen;
   libraryOpen = false;
+  libraryPresence.close();
   libraryHost?.style.setProperty('display', 'none', 'important');
+  // Reset the hidden UI now, so reopening never flashes the previous task.
+  libraryHost?.shadowRoot.querySelector('iframe')?.contentWindow.postMessage(
+    {type:'MN_NAVIGATE_HOME'}, chrome.runtime.getURL('').replace(/\/$/, ''));
   updatePlayerEntryState();
-  if (wasOpen) restorePageFocus(libraryReturnFocus);
+  if (wasOpen && restoreFocus) restorePageFocus(libraryReturnFocus);
 }
 async function showLibrary(tabId, home = false) {
   if (libraryBusy) return;
@@ -411,9 +428,14 @@ async function showLibrary(tabId, home = false) {
     await closeQuickNote('library');
     if (ui?.qn) throw new Error('请等待记录保存完成后再打开记录库');
     libraryTabId = tabId;
+    const {asideLibraryPinned} = await chrome.storage.local.get('asideLibraryPinned');
+    libraryPresence.pin(asideLibraryPinned);
     if (!libraryHost) {
       const host = document.createElement('div');
       host.id = 'aside-library-host';
+      host.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') libraryPresence.enter(); });
+      host.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && !e.buttons) libraryPresence.enter(); });
+      host.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') libraryPresence.leave(); });
       const shadow = host.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
       style.textContent = `
@@ -480,10 +502,11 @@ async function showLibrary(tabId, home = false) {
         if (e.button !== 0) return;
         e.preventDefault(); e.stopPropagation();
         const r = host.getBoundingClientRect(); drag = { x: e.clientX-r.left, y: e.clientY-r.top };
+        libraryPresence.interact(true);
         grip.setPointerCapture(e.pointerId); frame.style.pointerEvents = 'none';
       });
       grip.addEventListener('pointermove', e => { if(drag) move(e.clientX-drag.x, e.clientY-drag.y); });
-      const endDrag = () => { drag = null; frame.style.pointerEvents = ''; };
+      const endDrag = () => { drag = null; frame.style.pointerEvents = ''; libraryPresence.interact(false); };
       grip.addEventListener('pointerup', endDrag); grip.addEventListener('lostpointercapture', endDrag);
       grip.addEventListener('keydown', e => {
         const delta = { ArrowLeft: [-16,0], ArrowRight: [16,0], ArrowUp: [0,-16], ArrowDown: [0,16] }[e.key];
@@ -519,12 +542,13 @@ async function showLibrary(tabId, home = false) {
           e.preventDefault(); e.stopPropagation();
           if (handle.tabIndex === 0) handle.focus({preventScroll:true});
           origin = {rect:host.getBoundingClientRect(),x:e.clientX,y:e.clientY};
+          libraryPresence.interact(true);
           handle.setPointerCapture(e.pointerId); frame.style.pointerEvents = 'none';
         });
         handle.addEventListener('pointermove', e => {
           if (origin) resize(origin.rect,edge,e.clientX-origin.x,e.clientY-origin.y);
         });
-        const finish = () => {origin=null;frame.style.pointerEvents='';};
+        const finish = () => {origin=null;frame.style.pointerEvents='';libraryPresence.interact(false);};
         for (const event of ['pointerup','pointercancel','lostpointercapture']) handle.addEventListener(event,finish);
         shadow.append(handle);
       }
@@ -541,6 +565,7 @@ async function showLibrary(tabId, home = false) {
     libraryHost.style.setProperty('top', `${clamp(bounds.top,8,Math.max(8,innerHeight-bounds.height-8))}px`, 'important');
     libraryHost.style.setProperty('right', 'auto', 'important');
     libraryOpen = true;
+    libraryPresence.open();
     updatePlayerEntryState();
     const frame = libraryHost.shadowRoot.querySelector('iframe');
     frame.focus();
@@ -1409,6 +1434,7 @@ chrome.storage.local.get('uiTheme').then(({uiTheme}) => {
   if (surfaceThemeRevision === initialThemeRevision) applySurfaceTheme(uiTheme);
 }).catch(() => {});
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.asideLibraryPinned) libraryPresence.pin(changes.asideLibraryPinned.newValue);
   if (area === 'local' && changes.uiTheme) {
     surfaceThemeRevision += 1;
     applySurfaceTheme(changes.uiTheme.newValue);

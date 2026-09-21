@@ -146,6 +146,34 @@ test('RPC failure keeps durable pending data and propagates instead of false suc
   try { await assert.rejects(sync.flushPending(null, 'A'), /offline/); } finally { db.rpc = original; }
   assert.equal((await sync.getPendingIds()).has(note.id), true);
 });
+test('manual synchronization downloads cloud notes even with an empty local library', async () => {
+  await account('A');
+  const select = db.select;
+  db.select = async table => table === 'movies' ? [{ id:'cloud-only', movie_title:'Cloud note', updated_at:'2026-01-01' }] : [];
+  try {
+    assert.equal((await sync.synchronize('A', { forcePush:true })).size, 0);
+    assert.equal((await storage.getAllNotes())[0].id, 'cloud-only');
+  } finally { db.select = select; }
+});
+test('manual synchronization sends deletions even when the visible library is empty', async () => {
+  await account('A'); const { note } = await save('a'); await storage.deleteMovie(note.id);
+  const rpc = db.rpc, select = db.select; let sent;
+  db.rpc = async (_name, args) => { sent = args.payload; };
+  db.select = async () => [];
+  try {
+    assert.equal((await storage.getAllNotes()).length, 0);
+    assert.equal((await sync.synchronize('A', { forcePush:true })).size, 0);
+    assert.ok(sent.deleted_at);
+  } finally { db.rpc = rpc; db.select = select; }
+});
+test('manual synchronization propagates pull failure after a successful upload', async () => {
+  await account('A'); await save('a');
+  const rpc = db.rpc, select = db.select;
+  db.rpc = async () => {};
+  db.select = async () => { throw new Error('cloud read unavailable'); };
+  try { await assert.rejects(sync.synchronize('A', { forcePush:true }), /cloud read unavailable/); }
+  finally { db.rpc = rpc; db.select = select; }
+});
 test('outgoing deletion and thumbnail are included in one atomic RPC', async () => {
   await account('A'); const one = await save('a', { thumbnail: 'data:image/jpeg;base64,YQ==' });
   const two = await save('a'); await storage.deleteEntry(one.note.id, two.entry.id);

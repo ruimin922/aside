@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>旁白 Aside</title>
-    <link rel="icon" type="image/png" href="icons/icon32.png?v=film-1" />
+    <link rel="icon" type="image/png" href="icons/icon32.png?v=film-4" />
     <link rel="stylesheet" href="panel.css" />
     <link rel="stylesheet" href="theme.css" />
     <link rel="stylesheet" href="design.css" />
@@ -61,6 +61,10 @@
                 </h1>
               </div>
               <div class="topbar__actions">
+                <button type="button" id="btnPinLibrary" class="library-pin" hidden aria-label="固定窗口" aria-pressed="false" title="固定窗口 · 鼠标移出也保持打开">
+                  <svg class="library-pin__free" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 3 6 6-3 1-4 4v3l-2 2-7-7 2-2h3l4-4Z"/><path d="m9 15-6 6"/></svg>
+                  <svg class="library-pin__fixed" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l-1 3v5l3 3v2H6v-2l3-3V6Z" fill="currentColor"/><path d="M12 16v5"/></svg>
+                </button>
                 <div class="tip-toggle-wrap" id="tipToggleWrap">
                   <button
                     type="button"
@@ -352,6 +356,10 @@
                     <button type="button" class="text-link text-link--muted account-card__signout" id="btnSignOut">退出登录</button>
                   </div>
                 </div>
+              </div>
+              <div id="accountResyncRow" class="settings-row settings-row--block" hidden>
+                <p id="accountSyncHint" class="account-card__hint" role="status" hidden></p>
+                <button type="button" class="btn btn--ghost" id="btnResyncAll">立即同步</button>
               </div>
             </div>
           </div>

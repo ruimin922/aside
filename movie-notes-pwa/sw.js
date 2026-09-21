@@ -1,5 +1,5 @@
 // Service Worker — 网络优先（app 代码走最新），离线才回退到缓存
-const CACHE = "mn-pwa-v18";
+const CACHE = "mn-pwa-v21";
 const SHELL = ["/", "/index.html", "/app.js", "/style.css", "/theme.css", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {

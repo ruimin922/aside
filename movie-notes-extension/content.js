@@ -1,6 +1,6 @@
 (() => {
-if (globalThis.__asideContentLoaded === '1.9.10') return;
-globalThis.__asideContentLoaded = '1.9.10';
+if (globalThis.__asideContentLoaded === '1.9.12') return;
+globalThis.__asideContentLoaded = '1.9.12';
 const playerDock = globalThis.__asidePlayerDock;
 const nativeShortcuts = Boolean(chrome.runtime.getManifest?.().commands?.['quick-note']);
 function formatSeconds(sec) {
@@ -587,7 +587,7 @@ function ensureStyles() {
     position:relative;flex:0 0 36px;width:36px;height:var(--mn-entry-height,32px);vertical-align:middle;margin:0 4px;
     border:0;border-radius:5px;background:transparent;color:#fff;cursor:pointer;line-height:1;opacity:.85;
   }
-  .mn-player-entry svg{display:block!important;width:19px!important;height:19px!important;pointer-events:none;}
+  .mn-player-entry img{display:block!important;flex:none!important;width:28px!important;height:28px!important;max-width:none!important;object-fit:contain;pointer-events:none;user-select:none;}
   .mn-player-entry:hover,.mn-player-entry[aria-expanded="true"]{opacity:1;background:#ffffff18;}
   .mn-player-entry:focus-visible{outline:2px solid #ddd0ef;outline-offset:-2px;opacity:1;}
   .mn-player-entry[data-dock="fallback"]{position:fixed;z-index:2147483646;color:#fff;background:#24202bc9;backdrop-filter:blur(8px);margin:0;width:36px;height:32px;opacity:0;pointer-events:none;transition:opacity 160ms ease;}
@@ -726,11 +726,19 @@ function createFloatingSurface(kind, element) {
   return host;
 }
 
-// The same gently irregular silhouette and two-tone ink as the native Aside cursor.
+// Use the exact approved product artwork, isolated from the site's icon styles.
 function setPlayerEntryIcon(button, open) {
   button.setAttribute('aria-expanded', String(open));
-  button.setAttribute('aria-label',open ? '收起旁白记录' : '旁白 · 记录此刻');
-  button.innerHTML='<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4.5h12M4 9h7M4 13.5h4M12 16l4.5-4.5-2-2L10 14v2h2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  button.setAttribute('aria-label', open ? '收起旁白记录' : '旁白 · 记录此刻');
+  if (!button.querySelector('img')) {
+    const icon = document.createElement('img');
+    icon.src = chrome.runtime.getURL('icons/icon128.png');
+    icon.alt = '';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.width = icon.height = 28;
+    icon.draggable = false;
+    button.replaceChildren(icon);
+  }
 }
 
 const quickMessageTimers = new WeakMap();

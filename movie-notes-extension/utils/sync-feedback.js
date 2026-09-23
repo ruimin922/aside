@@ -1,5 +1,9 @@
+export function syncStatusLabel(state) {
+  return ({ hidden: '本地使用', syncing: '同步中', ok: '已同步', pending: '待同步', error: '同步失败' })[state] ?? '同步状态待确认';
+}
+
 // Keep a useful, persistent explanation beside the account, not only in a toast.
-export function describeSyncFailure(error) {
+export function describeSyncFailure(error, { online = true } = {}) {
   const message = String(error?.message || error || '');
   if (/升级同步结构|PGRST20[24]|42703|column .*does not exist/i.test(message)) {
     return { label: '云端需要升级', message: '云端同步服务尚未完成升级。笔记已保存在本机，升级完成后点击「立即同步」。' };
@@ -9,6 +13,9 @@ export function describeSyncFailure(error) {
   }
   if (/账号已切换/.test(message)) {
     return { label: '同步已暂停', message: '账号发生变化，请刷新页面后重试同步。' };
+  }
+  if (!online && /fetch|network|offline|网络/i.test(message)) {
+    return { label: '离线待同步', message: '当前无法联网，笔记保存在本机。恢复连接后会自动重试，也可点击「立即同步」。' };
   }
   if (/timeout|timed out|超时/i.test(message)) {
     return { label: '同步超时', message: '云端响应超时，笔记已保存在本机。请稍后点击「立即同步」。' };

@@ -18,7 +18,7 @@
       <h2 id="helpTitle">让想法留下来。</h2>
       <p class="help-lead">留下此刻的想法，也记住它发生的地方。</p>
       <ol class="help-steps">
-        <li><span>01</span><div><strong>播放一个视频</strong><p>打开想看的电影、访谈或视频播客。</p><p>支持 YouTube、B 站、爱奇艺、优酷、芒果 TV 和腾讯视频。</p></div></li>
+        <li><span>01</span><div><strong>播放一个视频</strong><p>打开想看的访谈、课程、视频播客或电影。</p><p>支持 YouTube、B 站、爱奇艺、优酷、芒果 TV 和腾讯视频。</p></div></li>
         <li><span>02</span><div><strong>留下这一刻</strong><p>点击 <kbd data-command="quick-note">Alt + N</kbd> 或点击播放器底栏的旁白按钮，打开快速记录，自动记录当前时间点并截取画面，你可以接着写下此刻的想法。</p></div></li>
         <li><span>03</span><div><strong>保存，随时回看</strong><p>保存笔记，随时可以在「旁白」中找到你的记录，并快速回到当时视频片段。</p></div></li>
       </ol>
@@ -60,70 +60,72 @@
                   <span class="brand-mark-en" aria-hidden="true">Aside</span>
                 </h1>
               </div>
-              <div class="topbar__actions">
-                <button type="button" id="btnPinLibrary" class="library-pin" hidden aria-label="固定窗口" aria-pressed="false" title="固定窗口 · 鼠标移出也保持打开">
-                  <svg class="library-pin__free" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 3 6 6-3 1-4 4v3l-2 2-7-7 2-2h3l4-4Z"/><path d="m9 15-6 6"/></svg>
-                  <svg class="library-pin__fixed" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l-1 3v5l3 3v2H6v-2l3-3V6Z" fill="currentColor"/><path d="M12 16v5"/></svg>
-                </button>
-                <div class="tip-toggle-wrap" id="tipToggleWrap">
+              <div class="window-tools-slot" data-window-tools-slot>
+                <div class="topbar__actions window-tools" id="windowTools" role="group" aria-label="窗口工具">
+                  <button type="button" id="btnPinLibrary" class="library-pin" hidden aria-label="固定窗口" aria-pressed="false" title="固定窗口 · 鼠标移出也保持打开">
+                    <svg class="library-pin__free" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 3 6 6-3 1-4 4v3l-2 2-7-7 2-2h3l4-4Z"/><path d="m9 15-6 6"/></svg>
+                    <svg class="library-pin__fixed" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l-1 3v5l3 3v2H6v-2l3-3V6Z" fill="currentColor"/><path d="M12 16v5"/></svg>
+                  </button>
+                  <div class="tip-toggle-wrap" id="tipToggleWrap">
+                    <button
+                      type="button"
+                      class="tip-toggle"
+                      id="btnOnboardToggle"
+                      aria-label="使用帮助"
+                      aria-expanded="false"
+                      aria-controls="onboardBanner"
+                      title="使用帮助"
+                    >
+                      <svg class="icon-tip" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M8.5 4a4.5 4.5 0 0 0-2.6 8.2V14h5.2v-1.8A4.5 4.5 0 0 0 8.5 4Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 17h3M14.5 2v3M13 3.5h3M16 8h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                    <div class="tip-pointer" id="tipPointer" hidden aria-hidden="true">
+
+                      <span class="tip-pointer__hint">第一次使用？从这里开始</span>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    class="tip-toggle"
-                    id="btnOnboardToggle"
-                    aria-label="使用帮助"
-                    aria-expanded="false"
-                    aria-controls="onboardBanner"
-                    title="使用帮助"
+                    class="theme-toggle"
+                    id="themeToggle"
+                    aria-label="切换浅色或深色主题"
+                    aria-pressed="false"
+                    title="切换至浅色"
                   >
-                    <svg class="icon-tip" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path d="M8.5 4a4.5 4.5 0 0 0-2.6 8.2V14h5.2v-1.8A4.5 4.5 0 0 0 8.5 4Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M7 17h3M14.5 2v3M13 3.5h3M16 8h1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    <span class="theme-toggle__icon" aria-hidden="true">
+                      <svg class="icon-sun" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+                        <line x1="10" y1="2" x2="10" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="10" y1="16" x2="10" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="2" y1="10" x2="4" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="16" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="14.36" y1="14.36" x2="15.78" y2="15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="15.78" y1="4.22" x2="14.36" y2="5.64" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        <line x1="5.64" y1="14.36" x2="4.22" y2="15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                      <svg class="icon-moon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16.5 11.5A7 7 0 0 1 8.5 3.5a7 7 0 1 0 8 8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="text-link text-link--top"
+                    id="btnSearchToggle"
+                    aria-expanded="false"
+                    aria-controls="searchExpand"
+                    title="搜索"
+                  >
+                    <svg class="icon-search" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/>
+                      <line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
                   </button>
-                  <div class="tip-pointer" id="tipPointer" hidden aria-hidden="true">
-
-                    <span class="tip-pointer__hint">第一次使用？从这里开始</span>
-                  </div>
                 </div>
-                <button
-                  type="button"
-                  class="theme-toggle"
-                  id="themeToggle"
-                  aria-label="切换浅色或深色主题"
-                  aria-pressed="false"
-                  title="切换至浅色"
-                >
-                  <span class="theme-toggle__icon" aria-hidden="true">
-                    <svg class="icon-sun" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.5"/>
-                      <line x1="10" y1="2" x2="10" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="10" y1="16" x2="10" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="2" y1="10" x2="4" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="16" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="14.36" y1="14.36" x2="15.78" y2="15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="15.78" y1="4.22" x2="14.36" y2="5.64" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                      <line x1="5.64" y1="14.36" x2="4.22" y2="15.78" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                    <svg class="icon-moon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M16.5 11.5A7 7 0 0 1 8.5 3.5a7 7 0 1 0 8 8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="text-link text-link--top"
-                  id="btnSearchToggle"
-                  aria-expanded="false"
-                  aria-controls="searchExpand"
-                  title="搜索"
-                >
-                  <svg class="icon-search" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/>
-                    <line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                  </svg>
-                </button>
-              </div>
+            </div>
             </div>
             <p class="topbar__hint" id="headerHint">记录观看时产生的想法。</p>
           </header>
@@ -134,13 +136,13 @@
                 <label class="sr-only" for="searchInput">搜索</label>
                 <div class="search-field">
                   <span class="search-field__icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="m13 13 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
-                  <input id="searchInput" class="input search-field__input" type="text" placeholder="搜索视频、记录或标签…" /><kbd class="search-shortcut" aria-hidden="true">/</kbd>
+                  <input id="searchInput" class="input search-field__input" type="text" placeholder="搜索视频、记录或标签…" /><button type="button" class="search-clear" id="btnClearSearch" aria-label="清除搜索" title="清除搜索" hidden><svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><kbd class="search-shortcut" aria-hidden="true">/</kbd>
                 </div>
               </div>
               <button class="primary-action" id="btnCaptureCurrent" type="button">记录新笔记</button>
             </div>
             <div class="home-toolbar">
-              <span id="librarySummary" class="library-summary">我的记录库</span>
+              <span id="librarySummary" class="library-summary" role="status" aria-live="polite">我的记录库</span>
               <button type="button" class="home-sort-label" id="homeSortLabel" aria-label="切换排序">
                 最近编辑 <span class="home-sort-label__caret">▾</span>
               </button>
@@ -154,7 +156,7 @@
 <svg class="empty-quote" viewBox="0 0 80 60" fill="none" aria-hidden="true"><path d="M8 31C7 17 17 7 34 6L35 14C24 16 19 21 19 28L34 27L32 51L10 53Z" fill="currentColor"/><path d="M45 30C44 16 55 5 72 7L72 15C61 16 56 22 57 29L73 30L70 53L47 51Z" fill="currentColor" opacity=".6"/></svg>
             </div>
             <div class="empty__title">从一个想法开始</div>
-            <div class="empty__sub">播放电影、访谈或视频播客，留下第一条记录。</div>
+            <div class="empty__sub">播放一个视频，留下第一条记录。</div>
           </div>
         </section>
 
@@ -167,7 +169,7 @@
               </svg>
             </button>
             <div class="pagebar__title">新建记录</div>
-            <div class="pagebar__right"></div>
+            <div class="window-tools-slot" data-window-tools-slot></div>
           </header>
 
           <div class="card card--new">
@@ -176,7 +178,7 @@
             <div id="newMovieMetaFields">
             <div class="field">
               <label class="label" for="movieTitle">所属视频</label>
-              <input id="movieTitle" class="input" type="text" placeholder="电影 / 视频标题" />
+              <input id="movieTitle" class="input" type="text" placeholder="视频标题" />
               <div class="error-text" id="errTitle"></div>
             </div>
 
@@ -292,7 +294,8 @@
               <div class="pagebar__title-main">视频记录</div>
               <span class="pagebar__title-sub" id="detailTopVideoLink"></span>
             </div>
-            <div class="pagebar__right pagebar__right--links">
+            <div class="window-tools-slot" data-window-tools-slot></div>
+            <div class="pagebar__right pagebar__right--links pagebar__record-actions">
               <button type="button" class="text-link" id="btnAddMoreTop">＋ 记录</button>
               <button type="button" class="text-link" id="btnExportMovie">导出</button><button type="button" class="text-link detail-delete" id="btnDeleteMovie" title="删除此视频及其全部记录">删除</button>
             </div>
@@ -325,6 +328,10 @@
 
         <!-- 设置页 -->
         <section class="view" id="viewStats">
+          <header class="pagebar pagebar--settings">
+            <h1 class="pagebar__title">设置</h1>
+            <div class="window-tools-slot" data-window-tools-slot></div>
+          </header>
           <!-- 账号 -->
           <div class="settings-section">
             <div class="settings-section__label">账号</div>

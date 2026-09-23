@@ -15,7 +15,7 @@ design.css theme.css cursor.css glass-grain.svg share.html share.js share.css
 icons/icon16.png icons/icon32.png icons/icon48.png icons/icon128.png
 vendor/marked.min.js vendor/qrcode-generator.js
 utils/notion.js utils/storage.js utils/help-snap.js utils/platform.js utils/common.js
-utils/local-data.js utils/supabase.js utils/sync.js utils/sync-feedback.js utils/merge.js'''.split()
+utils/local-data.js utils/supabase.js utils/sync.js utils/sync-feedback.js utils/search.js utils/merge.js'''.split()
 
 def main():
     manifest = json.loads((SOURCE / 'manifest.json').read_text())

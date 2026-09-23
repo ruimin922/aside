@@ -2,7 +2,8 @@ import { extractNotionPageId, createNotionPageWithMarkdown, verifyNotionConnecti
 import { bindHelpSnap } from "./utils/help-snap.js";
 import { isSupportedUrl, videoIdentity } from "./utils/platform.js";
 import { getOwner } from "./utils/local-data.js";
-import { describeSyncFailure } from "./utils/sync-feedback.js";
+import { searchNotes, searchExcerpt, highlightParts } from "./utils/search.js";
+import { syncStatusLabel, describeSyncFailure } from "./utils/sync-feedback.js";
 import {
   getAllNotes,
   saveEntry,
@@ -172,14 +173,14 @@ function setSyncDot(st) {
   const dot = document.getElementById("syncDot");
   if (dot) dot.dataset.state = st;
   const label = document.getElementById("accountStatusText");
-  if (label) label.textContent = ({ syncing: "同步中", ok: "已同步", pending: "待同步", error: "同步失败", hidden: "" })[st] || "等待同步";
+  if (label) label.textContent = syncStatusLabel(st);
   const hint = document.getElementById('accountSyncHint');
   if (hint) { hint.hidden = true; hint.textContent = ''; }
 }
 
 function showSyncFailure(error) {
-  const feedback = describeSyncFailure(error);
-  setSyncDot('error');
+  const feedback = describeSyncFailure(error, { online: navigator.onLine });
+  setSyncDot(feedback.label === '离线待同步' ? 'pending' : 'error');
   const label = document.getElementById('accountStatusText');
   if (label) label.textContent = feedback.label;
   const hint = document.getElementById('accountSyncHint');
@@ -188,7 +189,7 @@ function showSyncFailure(error) {
 
 function showSyncResult(pending) {
   setSyncDot(pending.size ? 'pending' : 'ok');
-  if (pending.size) document.getElementById('accountStatusText').textContent = `${pending.size} 个视频待同步`;
+  if (pending.size) document.getElementById('accountStatusText').textContent = `${navigator.onLine === false ? '离线 · ' : ''}${pending.size} 个视频待同步`;
 }
 
 // 写入后调用（fire-and-forget，不阻塞 UI）
@@ -751,6 +752,10 @@ function setView(next) {
   el.viewList.classList.toggle("view--active", next === VIEWS.LIST);
   el.viewDetail.classList.toggle("view--active", next === VIEWS.DETAIL);
   el.viewStats.classList.toggle("view--active", next === VIEWS.STATS);
+  // Move the same controls rather than cloning them: state and listeners stay shared.
+  const tools = document.getElementById('windowTools');
+  const toolsSlot = document.querySelector('.view--active [data-window-tools-slot]');
+  if (tools && toolsSlot && tools.parentElement !== toolsSlot) toolsSlot.append(tools);
   // ensure meta fields are visible by default when entering viewNew normally
   if (next === VIEWS.NEW) {
     clearErrors();
@@ -1460,7 +1465,7 @@ async function onSave() {
     clearTimeout(state.draftSaveTimer);
     await clearDraft();
     if (el.draftBanner) el.draftBanner.hidden = true;
-    showToast("记录已保存", "good");
+    showToast("已保存到本机", "good");
 
     el.entryContent.value = "";
     autosizeTextarea();
@@ -1594,24 +1599,6 @@ async function applyDraft(d) {
   state.pendingDraft = null;
 }
 
-function filterNotesByQuery(all, q) {
-  const query = (q || "").trim().toLowerCase();
-  if (!query) return all;
-  const hit = (s) => String(s || "").toLowerCase().includes(query);
-  return all.filter((n) => {
-    if (hit(n.movieTitle)) return true;
-    // 电影级标签（风格）
-    const movieTags = noteMovieTags(n);
-    if (movieTags.some(hit)) return true;
-    // 记录内容 + 记录级标签
-    const entries = Array.isArray(n.entries) ? n.entries : [];
-    return entries.some((e) => {
-      if (hit(e.content)) return true;
-      const etags = Array.isArray(e.tags) ? e.tags : [];
-      return etags.some(hit);
-    });
-  });
-}
 
 function filterNotesByTime(all, tf) {
   if (tf === "all") return all;
@@ -1697,22 +1684,90 @@ function setMoviePreviewExpanded(card, expanded, animate = false) {
   }).catch(() => { /* A second click reversed this animation. */ });
 }
 
+function appendHighlighted(target, text, query) {
+  for (const part of highlightParts(text, query)) {
+    if (!part.match) { target.append(document.createTextNode(part.text)); continue; }
+    const mark = document.createElement('mark'); mark.textContent = part.text; target.append(mark);
+  }
+}
+
+function renderSearchResults(results, query) {
+  for (const { note, entries, titleMatch, tagsMatch } of results) {
+    const group = document.createElement('article'); group.className = 'search-video';
+    const heading = document.createElement('h2'); heading.className = 'search-video__heading';
+    const videoLink = document.createElement('button'); videoLink.type = 'button';
+    videoLink.className = 'search-video__title'; videoLink.dataset.searchTarget = '';
+    appendHighlighted(videoLink, note.movieTitle || '未命名视频', query);
+    videoLink.addEventListener('click', () => void openDetail(note.id));
+    heading.append(videoLink); group.append(heading);
+    const source = note.videoUrl || note.entries?.find(entry => entry.videoUrl)?.videoUrl;
+    const meta = document.createElement('p'); meta.className = 'search-video__meta';
+    meta.textContent = `${source ? platformFromUrl(source) + ' · ' : ''}${entries.length ? entries.length + ' 条匹配记录' : titleMatch ? '视频标题匹配' : '视频标签匹配'}`;
+    group.append(meta);
+    if (tagsMatch) {
+      const tags = document.createElement('p'); tags.className = 'search-result__tags';
+      appendHighlighted(tags, noteMovieTags(note).map(tag => '#' + tag).join(' '), query); group.append(tags);
+    }
+    for (const entry of entries) {
+      const row = document.createElement('div'); row.className = 'search-result';
+      const body = document.createElement('button'); body.type = 'button';
+      body.className = 'search-result__open'; body.dataset.searchTarget = '';
+      const excerpt = document.createElement('span'); excerpt.className = 'search-result__excerpt';
+      appendHighlighted(excerpt, searchExcerpt(entry.content, query) || '无文字记录', query);
+      const action = document.createElement('span'); action.className = 'search-result__view'; action.textContent = '查看记录';
+      body.append(excerpt, action);
+      body.addEventListener('click', () => void openDetail(note.id, entry.id));
+      row.append(body);
+      if (entry.tags?.length) {
+        const tags = document.createElement('p'); tags.className = 'search-result__tags';
+        appendHighlighted(tags, entry.tags.map(tag => '#' + tag).join(' '), query); row.append(tags);
+      }
+      const seconds = entry.timestampStart ?? entry.timestamp;
+      const footer = document.createElement('div'); footer.className = 'search-result__footer';
+      if (typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0) {
+        const time = document.createElement('button'); time.type = 'button'; time.className = 'search-result__time';
+        const label = entry.timestampType === 'range'
+          ? `${formatSeconds(seconds)}–${formatSeconds(entry.timestampEnd)}` : formatSeconds(seconds);
+        time.textContent = `◷ ${label}`; time.title = '回到视频中的这个时间';
+        time.setAttribute('aria-label', `回到视频 ${label}`);
+        time.addEventListener('click', () => void seekNoteVideo({ ...note, videoUrl: entry.videoUrl || source }, seconds));
+        footer.append(time);
+      } else {
+        const label = document.createElement('span'); label.textContent = '整体想法'; footer.append(label);
+      }
+      row.append(footer); group.append(row);
+    }
+    el.movieList.append(group);
+  }
+}
+
 let listRenderVersion = 0;
 async function refreshList() {
   const version = ++listRenderVersion;
   const allRaw = await getAllNotes();
   if (version !== listRenderVersion) return;
-  const all = filterNotesByQuery(allRaw, state.listQuery);
+  const query = state.listQuery.trim();
+  const all = [...allRaw];
   all.sort(state.homeSort === 'entries'
     ? (a,b) => (b.entries?.length || 0) - (a.entries?.length || 0)
     : (a,b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
   document.getElementById('librarySummary').textContent = `${allRaw.length} 个视频 · ${allRaw.reduce((n,v)=>n+(v.entries?.length||0),0)} 条记录`;
   updateTipToggleUi();
   if (!allRaw.length && !state.tipPointerSeen) showTipPointerHint();
+  $('btnClearSearch').hidden = !state.listQuery;
   el.movieList.replaceChildren();
   el.emptyState.classList.toggle('empty--show', !all.length);
-  el.emptyState.querySelector('.empty__title').textContent = state.listQuery ? '没有找到相关记录' : '从一个想法开始';
-  el.emptyState.querySelector('.empty__sub').textContent = state.listQuery ? '试试其他关键词，也可以搜索记录正文和标签。' : '播放电影、访谈或视频播客，留下第一条记录。';
+  el.emptyState.querySelector('.empty__title').textContent = query ? '没有找到相关记录' : '从一个想法开始';
+  el.emptyState.querySelector('.empty__sub').textContent = query ? '试试其他关键词，也可以搜索记录正文和标签。' : '播放一个视频，留下第一条记录。';
+  if (query) {
+    const results = searchNotes(all, query);
+    const count = results.reduce((sum, result) => sum + result.entries.length, 0);
+    $('librarySummary').textContent = results.length
+      ? `${results.length} 个相关视频 · ${count} 条匹配记录` : '没有找到相关记录';
+    el.emptyState.classList.toggle('empty--show', !results.length);
+    renderSearchResults(results, query);
+    return;
+  }
   for (const note of all) {
     const card = document.createElement('article');
     card.className = 'movie-card'; card.dataset.movieId = note.id;
@@ -1907,7 +1962,7 @@ async function syncUiAfterExternalStorageWrite() {
   }
 }
 
-async function openDetail(movieId) {
+async function openDetail(movieId, entryId = null) {
   if (isSampleMovieId(movieId)) {
     const sample = SAMPLE_MOVIES.find((s) => s.id === movieId);
     if (!sample) { showToast("未找到该示例", "warn"); return; }
@@ -1915,7 +1970,7 @@ async function openDetail(movieId) {
     state.detailMovie = sample;
     renderDetail(sample);
     setView(VIEWS.DETAIL);
-    showToast("这是示例。可以左上角返回，然后写下你自己的第一部电影", "good", 3000);
+    showToast("这是示例。返回后，留下你自己的第一条记录", "good", 3000);
     return;
   }
   const all = await getAllNotes();
@@ -1929,6 +1984,17 @@ async function openDetail(movieId) {
 
   renderDetail(note);
   setView(VIEWS.DETAIL);
+  if (entryId) {
+    const target = [...el.detailEntries.querySelectorAll('[data-entry-id]')]
+      .find(card => card.dataset.entryId === entryId);
+    if (target) {
+      target.tabIndex = -1;
+      target.classList.add('entry-card--located');
+      target.scrollIntoView({ block: 'center' });
+      target.focus({ preventScroll: true });
+      target.addEventListener('blur', () => target.classList.remove('entry-card--located'), { once: true });
+    }
+  }
 }
 
 // ── 就地编辑：保存电影元信息 ─────────────────────────────────────────
@@ -2148,7 +2214,7 @@ const title = note.movieTitle || "（未命名）";
 
   const allOrdered = [];
   if (reviews.length) {
-    appendSectionLabel("我的影评");
+    appendSectionLabel("整体想法");
     for (const it of reviews) allOrdered.push(it);
   }
   if (stamps.length) {
@@ -2159,6 +2225,7 @@ const title = note.movieTitle || "（未命名）";
   for (const it of allOrdered) {
     const card = document.createElement("div");
     card.className = "entry-card";
+    card.dataset.entryId = it.id;
 
     if (it.thumbnail || it.hasThumbnail) {
       const thumb = document.createElement("img");
@@ -2475,7 +2542,7 @@ const title = note.movieTitle || "（未命名）";
             renderDetail(refreshed);
             refreshList();
           }
-          showToast("已保存修改", "good");
+          showToast("修改已保存到本机", "good");
         } catch (e) {
           console.error(e);
           showToast(e?.message || "保存失败，请重试", "danger");
@@ -2727,7 +2794,7 @@ function bindEvents() {
       return;
     }
     if (!modalOpen && state.currentView === VIEWS.LIST && e.target === el.searchInput && e.key === 'ArrowDown') {
-      e.preventDefault();el.movieList.querySelector('.movie-card__toggle')?.focus();return;
+      e.preventDefault();el.movieList.querySelector('[data-search-target],.movie-card__toggle')?.focus();return;
     }
     const typing=e.target.closest?.('input,textarea,select,[contenteditable="true"]');
     if (typing || modalOpen || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -2736,8 +2803,8 @@ function bindEvents() {
     else if(e.key.toLowerCase()==='n') { e.preventDefault();if(state.currentView===VIEWS.NEW)el.entryContent.focus();else void startCapture(true); }
     else if(e.key.toLowerCase()==='s') { e.preventDefault();void navigateWithKeyboard(VIEWS.STATS); }
     else if(e.key.toLowerCase()==='l') { e.preventDefault();void navigateWithKeyboard(VIEWS.LIST); }
-    else if (state.currentView === VIEWS.LIST && e.target.matches('.movie-card__toggle')) {
-      const toggles=[...el.movieList.querySelectorAll('.movie-card__toggle')],index=toggles.indexOf(e.target);
+    else if (state.currentView === VIEWS.LIST && e.target.matches('[data-search-target],.movie-card__toggle')) {
+      const toggles=[...el.movieList.querySelectorAll('[data-search-target],.movie-card__toggle')],index=toggles.indexOf(e.target);
       if (e.key==='ArrowDown' || e.key==='ArrowUp') { e.preventDefault();toggles[Math.max(0,Math.min(toggles.length-1,index+(e.key==='ArrowDown'?1:-1)))]?.focus(); }
       if ((e.key==='ArrowRight' && e.target.getAttribute('aria-expanded')==='false') || (e.key==='ArrowLeft' && e.target.getAttribute('aria-expanded')==='true')) { e.preventDefault();e.target.click(); }
     }
@@ -2981,6 +3048,10 @@ function bindEvents() {
     scheduleDraftSave();
   });
 
+  $('btnClearSearch').addEventListener('click', () => {
+    state.listQuery = ''; el.searchInput.value = '';
+    void refreshList(); el.searchInput.focus();
+  });
   el.searchInput.addEventListener("input", (e) => {
     state.listQuery = e.target.value || "";
     refreshList();
@@ -3060,7 +3131,7 @@ function bindEvents() {
   el.btnExportMovie.addEventListener("click", () => {
     if (!state.detailMovie) return;
     if (isSampleMovieId(state.detailMovie.id)) {
-      showToast("示例不可导出，开始记录你的第一部电影吧", "good", 2400);
+      showToast("示例不可导出，先留下你自己的第一条记录吧", "good", 2400);
       return;
     }
     openExportModal("movie");
@@ -3075,7 +3146,7 @@ function bindEvents() {
 
   document.getElementById("btnAddMoreTop")?.addEventListener("click", () => {
     if (state.detailMovie && isSampleMovieId(state.detailMovie.id)) {
-      showToast("示例不可追加记录，先返回写下你自己的第一部电影吧", "good", 2600);
+      showToast("示例不可追加记录，先返回留下你自己的第一条记录吧", "good", 2600);
       return;
     }
     if (state.detailMovie) {
